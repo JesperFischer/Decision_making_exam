@@ -1,0 +1,209 @@
+---
+title: "test"
+author: "Jesper Fischer Ehmsen"
+date: '2022-11-02'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r}
+
+df1 = read.csv("data.csv")
+
+df = df1 %>% filter(id == 265)
+
+
+y = df$predResp2
+u = df$u
+ntrials = 306
+```
+
+
+
+
+
+```{r}
+library(R2jags)
+
+df = df1 %>% filter(id == 265)
+
+y = df$predResp2
+u = df$u
+ntrials = 306
+
+
+if (length(which(is.na(u))) != 0){
+  ntrials = ntrials-length(which(is.na(u)))
+  indexs= which(is.na(u))
+  u = u[-indexs]
+  y = y[-indexs]
+}
+
+
+
+data <- list("y","u","ntrials")
+
+
+params<-c("omega","beta","c","mu1hat")
+
+
+samples <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                         n.iter=3000, n.burnin=1000)
+
+
+plot(density(samples$BUGSoutput$sims.list$mu1hat))
+
+
+```
+
+¨
+
+```{r}
+library(LaplacesDemon)
+
+
+
+
+```
+
+
+
+```{r}
+source("2_level_hgf_agent.R")
+
+
+sim_data = data.frame(beta = NA,c = NA,deviance = NA,omega = NA)
+real_data = data.frame(beta = NA,c = NA,omega = NA)
+
+for (i in 1:100){
+  ntrials = 306
+  df = df1 %>% filter(id == 268)
+  u = df$u
+  
+  beta = runif(n = 1, min = 1, max = 10)
+  
+  omega = runif(n = 1, min = -8, max = 1)
+
+  c = runif(n = 1, min = -3, max = 3)
+  
+  data = data.frame(beta = beta,c = c,omega = omega)
+  
+  real_data = rbind(real_data, data)
+  
+  data = hgf_agent(u,omega,beta,c)
+  
+  yhat = as.integer(data$yhat)
+
+  y = yhat
+  
+  data <- list("y","u","ntrials")
+  
+  params<-c("omega","beta","c")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+
+  sim_data = rbind(sim_data,samples$BUGSoutput$summary[,1])
+  
+  print(i)
+}
+
+```
+
+
+
+
+```{r plotting}
+
+sim_data$deviance = NULL
+
+
+
+ggplot(data = real_data, aes(x = omega, y = sim_data$omega))+geom_point()+ggtitle("omega")
+
+
+
+ggplot(data = real_data, aes(x = beta, y = sim_data$beta))+geom_point()+ggtitle("beta")
+
+
+ggplot(data = real_data, aes(x = c, y = sim_data$c))+geom_point()+ggtitle("c")
+
+```
+
+
+```{r lets run this: }
+real_data2 = data.frame(beta = NA,c = NA,omega = NA)
+
+timer = 0
+for (i in unique(df1$id)){
+  timer = timer +1
+  df = df1 %>% filter(id == i)
+  y = df$predResp2
+  u = df$u
+  ntrials = nrow(df)
+  
+  if (length(which(is.na(u))) != 0){
+    ntrials = ntrials-length(which(is.na(u)))
+    indexs= which(is.na(u))
+    u = u[-indexs]
+    y = y[-indexs]
+  }
+  
+  
+  
+  data <- list("y","u","ntrials")
+  
+  
+  params<-c("omega","beta","c")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+  q = samples$BUGSoutput$summary[,1]
+  
+  real_data2 = rbind(real_data2,q)
+  print(timer)
+  
+}
+
+
+real_data2$id = unique(df1$id)
+```
+
+
+```{r}
+
+
+k = 0
+sequence = array(NA,length(unique(df1$id)))
+for (i in unique(df1$id)){
+  k = k+1
+  df = df1 %>% filter(id == i)
+  seq = df$sequence[1]
+  sequence[k] = seq
+}
+
+
+real_data2$seq = sequence
+
+real_data2 %>% ggplot(aes(x = as.factor(seq), y = c, fill = as.factor(seq)))+geom_boxplot(notch = T)
+
+
+summary(lm(c ~ as.factor(seq), data = real_data2))
+
+```
+
