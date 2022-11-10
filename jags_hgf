@@ -1,0 +1,31 @@
+model {
+
+  omega ~ normal(-3.6,3)
+  beta ~ normal(2,5)
+  
+  mu2[1] ~ normal(0,sa2)
+  sa2[1] ~ normal(0.4,0.2)
+  
+  
+  
+   for (t in 2:ntrials) {
+  
+  
+    mu1hat[t] = inv_logit(mu2[t])  
+    sa1hat[t] = mu1hat[t]*(1-mu1hat[t])
+    da[t] = u[t]-mu1hat[t]
+    
+    sa2hat[t] = sa2[t-1]+exp(omega)
+    sa2[t] = 1/((1/sa2hat[t])+sa1hat[t])
+    mu2[t] = mu2[t-1]+da[t]*sa2[t]
+      
+      
+    exp_p[t] <- mu1hat[t]^beta/((mu1hat[t]^beta)+(1-mu1hat[t])^beta)
+    
+    
+    y[t] ~ dcat(p[t,])
+   
+    
+  }
+
+  }
