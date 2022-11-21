@@ -7,6 +7,11 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(R2jags)
+library(tidyverse)
+library(LaplacesDemon)
+library(boral)
+library(glmmTMB)
 ```
 
 ## R Markdown
@@ -29,13 +34,16 @@ ntrials = 306
 
 
 ```{r}
-library(R2jags)
-
-df = df1 %>% filter(id == 265)
+i =268
+df = df1 %>% filter(id == i)
+df = df %>% add_row(.before = 1)
 
 y = df$predResp2
 u = df$u
-ntrials = 306
+ntrials = 307
+
+u[1] = -100
+y[1] = -100
 
 
 if (length(which(is.na(u))) != 0){
@@ -45,47 +53,56 @@ if (length(which(is.na(u))) != 0){
   y = y[-indexs]
 }
 
-
-
 data <- list("y","u","ntrials")
 
 
-params<-c("omega","beta","c","mu1hat")
+params<-c("omega","beta","c","mu1hat","sa2","da","sa1hat","sa2hat","mu2")
 
 
 samples <- jags.parallel(data, inits=NULL, params,
-                         model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                         model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
                          n.iter=3000, n.burnin=1000)
 
 
 plot(density(samples$BUGSoutput$sims.list$mu1hat))
 
 
+
+
+yup = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
+                 c = rep(samples$BUGSoutput$summary[2,1],ntrials), 
+                 da = samples$BUGSoutput$summary[3:(2+ntrials)],
+                 deviance = rep(samples$BUGSoutput$summary[3+ntrials],ntrials), 
+                 mu1hat = samples$BUGSoutput$summary[(4+ntrials):(3+2*ntrials)],
+                 mu2 = samples$BUGSoutput$summary[(4+2*ntrials):(3+3*ntrials)],
+                 omega = rep(samples$BUGSoutput$summary[(4+3*ntrials)],ntrials), 
+                 sa1hat = samples$BUGSoutput$summary[(5+3*ntrials):(4+4*ntrials)], 
+                 sa2 = samples$BUGSoutput$summary[(5+4*ntrials):(4+5*ntrials)],
+                 sa2hat = samples$BUGSoutput$summary[(5+5*ntrials):(4+6*ntrials)],
+                 DIC = rep(samples$BUGSoutput$DIC,ntrials))
+
+
+str(samples)
+
 ```
 
-¨
-
-```{r}
-library(LaplacesDemon)
 
 
 
 
-```
+```{r parameter recovery of cmc model}
+source("2_level_hgf_agent_cmc.R")
 
-
-
-```{r}
-source("2_level_hgf_agent.R")
-
-
-sim_data = data.frame(beta = NA,c = NA,deviance = NA,omega = NA)
-real_data = data.frame(beta = NA,c = NA,omega = NA)
+sim_data1 = data.frame(beta = NA,c = NA,deviance = NA,omega = NA)
+real_data1 = data.frame(beta = NA,c = NA,omega = NA)
 
 for (i in 1:100){
-  ntrials = 306
+  ntrials = 307
   df = df1 %>% filter(id == 268)
+  df = df %>% add_row(.before = 1)
   u = df$u
+  u[1] = -100
+  
   
   beta = runif(n = 1, min = 1, max = 10)
   
@@ -95,9 +112,9 @@ for (i in 1:100){
   
   data = data.frame(beta = beta,c = c,omega = omega)
   
-  real_data = rbind(real_data, data)
+  real_data1 = rbind(real_data1, data)
   
-  data = hgf_agent(u,omega,beta,c)
+  data = hgf_agent_c(u,omega,beta,c)
   
   yhat = as.integer(data$yhat)
 
@@ -109,48 +126,338 @@ for (i in 1:100){
   
   
   samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+
+  sim_data1 = rbind(sim_data1,samples$BUGSoutput$summary[,1])
+  
+  print(i)
+}
+
+
+
+#plotting
+
+sim_data1$deviance = NULL
+
+
+
+ggplot(data = real_data1, aes(x = omega, y = sim_data1$omega))+geom_point()+ggtitle("omega")
+
+
+
+ggplot(data = real_data1, aes(x = beta, y = sim_data1$beta))+geom_point()+ggtitle("beta")
+
+
+ggplot(data = real_data1, aes(x = c, y = sim_data1$c))+geom_point()+ggtitle("c")
+
+```
+
+
+
+
+```{r normal parameter recovery}
+
+source("2_level_hgf_agent.R")
+
+sim_data2 = data.frame(beta = NA,deviance = NA,omega = NA)
+real_data2 = data.frame(beta = NA,omega = NA)
+
+for (i in 1:100){
+  ntrials = 307
+  df = df1 %>% filter(id == 268)
+  df = df %>% add_row(.before = 1)
+  u = df$u
+  u[1] = -100
+  
+  
+  beta = runif(n = 1, min = 1, max = 10)
+  
+  omega = runif(n = 1, min = -8, max = 1)
+
+  
+  data = data.frame(beta = beta,omega = omega)
+  
+  real_data2 = rbind(real_data2, data)
+  
+  data = hgf_agent(u,omega,beta)
+  
+  yhat = as.integer(data$yhat)
+
+  y = yhat
+  
+  data <- list("y","u","ntrials")
+  
+  params<-c("omega","beta")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
                            model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
                            n.iter=3000, n.burnin=1000)
   
   
 
-  sim_data = rbind(sim_data,samples$BUGSoutput$summary[,1])
+  sim_data2 = rbind(sim_data2,samples$BUGSoutput$summary[,1])
   
   print(i)
 }
 
+
+#plotting
+
+sim_data2$deviance = NULL
+
+
+
+ggplot(data = real_data2, aes(x = omega, y = sim_data2$omega))+geom_point()+ggtitle("omega")
+
+
+
+ggplot(data = real_data2, aes(x = beta, y = sim_data2$beta))+geom_point()+ggtitle("beta")
+
+```
+
+
+```{r 3 level parameter recovery}
+source("3_level_hgf_agent.R")
+
+
+
+
+
+#i = 279
+
+#u, omega, theta, kappa, beta
+
+sim_data3 = data.frame(beta = NA,deviance = NA,kappa = NA, omega = NA,theta = NA)
+real_data3 = data.frame(beta = NA,kappa = NA, omega = NA, theta = NA)
+
+for (i in 1:100){
+  ntrials = 307
+  df = df1 %>% filter(id == 268)
+  df = df %>% add_row(.before = 1)
+  u = df$u
+  u[1] = -100
+  
+  
+  beta = runif(n = 1, min = 1, max = 5)
+  omega = runif(n = 1, min = -4, max = 2)
+  theta= runif(n = 1, min = -6, max = 6)
+  kappa = runif(n = 1, min = 0.1, max = 2)
+
+  
+  data = data.frame(beta = beta,kappa = kappa, omega = omega, theta = theta)
+  
+  real_data3 = rbind(real_data3, data)
+  
+  
+  data = hgf_agent_3level(df$u,omega,theta,kappa,beta)
+  
+  data = hgf_agent(u,omega,beta)
+  
+  yhat = as.integer(data$yhat)
+
+  y = yhat
+  
+  data <- list("y","u","ntrials")
+  
+  params<-c("omega","beta","theta", "kappa")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="/home/jespere/Decision_making_exam/jags_hgf_3_level.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+
+  sim_data3 = rbind(sim_data3,samples$BUGSoutput$summary[,1])
+  
+  print(i)
+}
+
+
+#plotting
+
+sim_data3$deviance = NULL
+
+
+
+ggplot(data = real_data3, aes(x = omega, y = sim_data3$omega))+geom_point()+ggtitle("omega")
+
+
+
+ggplot(data = real_data3, aes(x = beta, y = sim_data3$beta))+geom_point()+ggtitle("beta")
+ggplot(data = real_data3, aes(x = theta, y = sim_data3$theta))+geom_point()+ggtitle("beta")
+ggplot(data = real_data3, aes(x = kappa, y = sim_data3$kappa))+geom_point()+ggtitle("beta")
+
+
 ```
 
 
 
 
-```{r plotting}
-
-sim_data$deviance = NULL
+```
 
 
 
-ggplot(data = real_data, aes(x = omega, y = sim_data$omega))+geom_point()+ggtitle("omega")
+
+#Idk
+```{r model recovery}
+source("2_level_hgf_agent_cmc.R")
+#simualting from cmc model
+
+DIC_n_cmc = array(NA,1000)
+DIC_cmc_cmc = array(NA,1000)
+
+timer = 0
+
+for (ii in 1:10){
+  for (i in 1:100){
+    timer = timer+1
+    ntrials = 307
+    df = df1 %>% filter(id == 268)
+    df = df %>% add_row(.before = 1)
+    u = df$u
+    u[1] = -100
+    print(ii)
+    
+    beta = ii
+    
+    omega = runif(n = 1, min = -8, max = 1)
+    
+    c = runif(n = 1, min = -5, max = 5)
+    
+    data = hgf_agent_c(u,omega,beta,c)
+    
+    
+  
+    yhat = as.integer(data$yhat)
+  
+    y = yhat
+    
+    data <- list("y","u","ntrials")
+    
+    params<-c("omega","beta")
+    
+    samples <- jags.parallel(data, inits=NULL, params,
+                             model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                             n.iter=3000, n.burnin=1000)
+    
+    DIC_n_cmc[timer] = samples$BUGSoutput$DIC
+    
+    
+    params<-c("omega","beta","c")
+    
+    
+    samples <- jags.parallel(data, inits=NULL, params,
+                             model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
+                             n.iter=3000, n.burnin=1000)
+    
+    DIC_cmc_cmc[timer] = samples$BUGSoutput$DIC
+  
+  
+  }
+}
 
 
+source("2_level_hgf_agent.R")
+#simualting from cmc model
 
-ggplot(data = real_data, aes(x = beta, y = sim_data$beta))+geom_point()+ggtitle("beta")
+DIC_n_n = array(NA,1000)
+DIC_cmc_n = array(NA,1000)
+timer = 0
+
+for (ii in 1:10){
+  for (i in 1:100){
+    timer = timer+1
+    ntrials = 307
+    df = df1 %>% filter(id == 268)
+    df = df %>% add_row(.before = 1)
+    u = df$u
+    u[1] = -100
+    
+    
+    beta = runif(n = 1, min = 1, max = 10)
+    
+    omega = runif(n = 1, min = -8, max = 1)
+    
+    data = hgf_agent(u,omega,beta)
+    
+    
+  
+    yhat = as.integer(data$yhat)
+  
+    y = yhat
+    
+    data <- list("y","u","ntrials")
+    
+    params<-c("omega","beta")
+    
+    samples <- jags.parallel(data, inits=NULL, params,
+                             model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                             n.iter=3000, n.burnin=1000)
+    
+    DIC_n_n[timer] = samples$BUGSoutput$DIC
+    
+    
+    params<-c("omega","beta","c")
+    
+    
+    samples <- jags.parallel(data, inits=NULL, params,
+                             model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
+                             n.iter=3000, n.burnin=1000)
+    
+    DIC_cmc_n[timer] = samples$BUGSoutput$DIC
+  
+  print(ii)
+  }
+
+}
 
 
-ggplot(data = real_data, aes(x = c, y = sim_data$c))+geom_point()+ggtitle("c")
+```
+
+#idk
+```{r}
+
+sum1 = array(NA,10)
+sum2 = array(NA,10)
+timer = c(1,100,200,300,400,500,600,700,800,900,100)
+
+
+for (i in 1:10){
+  (timer+1)*100
+  
+sum1[i] = sum(DIC_n_n[timer[i]:(i*100)]>DIC_cmc_n[timer[i]:(i*100)])
+sum2[i] = sum(DIC_cmc_cmc[timer[i]:(i*100)]>DIC_n_cmc[timer[i]:(i*100)])
+
+}
+
 
 ```
 
 
-```{r lets run this: }
-real_data2 = data.frame(beta = NA,c = NA,omega = NA)
+
+
+
+
+
+
+```{r lets run this cmc: }
+cmc_data = data.frame(beta = NA,c = NA,da = NA,deviance = NA,mu1hat = NA,mu2 = NA, omega = NA,sa1hat = NA, sa2 = NA,sa2hat = NA,ntrials  = NA, id = NA, DIC = NA)
 
 timer = 0
 for (i in unique(df1$id)){
   timer = timer +1
   df = df1 %>% filter(id == i)
+  df = df %>% add_row(.before = 1)
   y = df$predResp2
   u = df$u
+  u[1] = -100
+  y[1] = -100
+  
   ntrials = nrow(df)
   
   if (length(which(is.na(u))) != 0){
@@ -165,7 +472,70 @@ for (i in unique(df1$id)){
   data <- list("y","u","ntrials")
   
   
-  params<-c("omega","beta","c")
+
+  params<-c("omega","beta","c","mu1hat","sa2","da","sa1hat","sa2hat","mu2")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+
+  datax = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
+                   c = rep(samples$BUGSoutput$summary[2,1],ntrials), 
+                   da = samples$BUGSoutput$summary[3:(2+ntrials)],
+                   deviance = rep(samples$BUGSoutput$summary[3+ntrials],ntrials), 
+                   mu1hat = samples$BUGSoutput$summary[(4+ntrials):(3+2*ntrials)],
+                   mu2 = samples$BUGSoutput$summary[(4+2*ntrials):(3+3*ntrials)],
+                   omega = rep(samples$BUGSoutput$summary[(4+3*ntrials)],ntrials), 
+                   sa1hat = samples$BUGSoutput$summary[(5+3*ntrials):(4+4*ntrials)], 
+                   sa2 = samples$BUGSoutput$summary[(5+4*ntrials):(4+5*ntrials)],
+                   sa2hat = samples$BUGSoutput$summary[(5+5*ntrials):(4+6*ntrials)],
+                   ntrials = 1:ntrials,
+                   id = rep(i,ntrials),
+                   DIC = rep(samples$BUGSoutput$DIC,ntrials))
+
+  
+  cmc_data = rbind(cmc_data,datax)
+  print(timer)
+  
+}
+
+cmc_data = cmc_data[-1,]
+```
+
+
+
+```{r lets run this normal: }
+ndata = data.frame(beta = NA,da = NA,deviance = NA,mu1hat = NA,mu2 = NA, omega = NA,sa1hat = NA, sa2 = NA,sa2hat = NA,ntrials  = NA, id = NA, DIC = NA)
+
+timer = 0
+for (i in unique(df1$id)){
+  timer = timer +1
+  df = df1 %>% filter(id == i)
+  df = df %>% add_row(.before = 1)
+  y = df$predResp2
+  u = df$u
+  u[1] = -100
+  y[1] = -100
+  
+  ntrials = nrow(df)
+  
+  if (length(which(is.na(u))) != 0){
+    ntrials = ntrials-length(which(is.na(u)))
+    indexs= which(is.na(u))
+    u = u[-indexs]
+    y = y[-indexs]
+  }
+  
+  
+  
+  data <- list("y","u","ntrials")
+  
+  
+
+  params<-c("omega","beta","mu1hat","sa2","da","sa1hat","sa2hat","mu2")
   
   
   samples <- jags.parallel(data, inits=NULL, params,
@@ -173,19 +543,60 @@ for (i in unique(df1$id)){
                            n.iter=3000, n.burnin=1000)
   
   
-  q = samples$BUGSoutput$summary[,1]
+
+  datax = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
+                   da = samples$BUGSoutput$summary[2:(1+ntrials)],
+                   deviance = rep(samples$BUGSoutput$summary[2+ntrials],ntrials), 
+                   mu1hat = samples$BUGSoutput$summary[(3+ntrials):(2+2*ntrials)],
+                   mu2 = samples$BUGSoutput$summary[(3+2*ntrials):(2+3*ntrials)],
+                   omega = rep(samples$BUGSoutput$summary[(3+3*ntrials)],ntrials), 
+                   sa1hat = samples$BUGSoutput$summary[(4+3*ntrials):(3+4*ntrials)], 
+                   sa2 = samples$BUGSoutput$summary[(4+4*ntrials):(3+5*ntrials)],
+                   sa2hat = samples$BUGSoutput$summary[(4+5*ntrials):(3+6*ntrials)],
+                   ntrials = 1:ntrials,
+                   id = rep(i,ntrials),
+                   DIC = rep(samples$BUGSoutput$DIC,ntrials))
+
   
-  real_data2 = rbind(real_data2,q)
+  ndata = rbind(ndata,datax)
   print(timer)
   
 }
 
-
-real_data2$id = unique(df1$id)
+ndata = ndata[-1,]
 ```
 
 
+
+
+
+
 ```{r}
+#write.csv(dataxx, file = "dataxx.csv")
+cmc_data$trial = cmc_data$ntrials
+ndata$trial = ndata$ntrials
+
+cmc_data = cmc_data %>% filter(ntrials != 1)
+cmc_data$trial = cmc_data$trial-1
+
+
+ndata = ndata %>% filter(ntrials != 1)
+ndata$trial = ndata$trial-1
+
+cmc = inner_join(cmc_data,df1, by = c("id","trial"))
+normal = inner_join(ndata,df1, by = c("id","trial"))
+
+
+
+yes %>% group_by(id) %>% filter(row_number()==1) %>% ggplot(aes(y = c, fill = as.factor(sequence)))+geom_boxplot(notch = T)
+```
+
+
+
+```{r}
+
+#There is a problem of that 1 is high-tone = cold but also low tone = warm (so what drives the effect??)
+
 
 
 k = 0
@@ -206,4 +617,113 @@ real_data2 %>% ggplot(aes(x = as.factor(seq), y = c, fill = as.factor(seq)))+geo
 summary(lm(c ~ as.factor(seq), data = real_data2))
 
 ```
+
+
+
+```{r}
+
+
+xax = cmc_data %>% group_by(id) %>% filter(row_number()==1) %>% summarize(meancmc = mean(DIC))
+
+xax1 = ndata %>% group_by(id) %>% filter(row_number()==1) %>% summarize(meann = mean(DIC))
+
+
+deviance = inner_join(xax,xax1)
+
+
+deviance %>% ggplot(aes(y = meann,x = meancmc))+geom_point()+geom_abline()
+
+```
+
+
+
+
+
+
+
+### models:
+
+
+```{r}
+
+
+
+m_cold_feel22xxx = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
+                         data = cmc %>% filter(stim != "NaN" & sa2.x < 6))
+
+summary(m_cold_feel22xxx)
+
+
+
+
+
+m_cold_feel22xx = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
+                         data = normal %>% filter(stim != "NaN" & sa2.x < 6))
+
+summary(m_cold_feel22xx)
+
+
+
+
+
+
+
+
+m_cold_feel22 = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
+                         data = cmc %>% filter(stim != "NaN"))
+
+summary(m_cold_feel22)
+
+
+
+
+
+m_cold_feel22x = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
+                         data = normal %>% filter(stim != "NaN"))
+
+summary(m_cold_feel22x)
+
+
+
+
+
+m_cold_feel = glmmTMB::glmmTMB(burnbeta ~ sa2hat.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2hat.x+vasRT_3+(1|id)+(1|id:location),
+                         data = cmc %>% filter(stim != "NaN"))
+
+summary(m_cold_feel)
+
+
+
+
+
+m_cold_feel2 = glmmTMB::glmmTMB(burnbeta ~ sa2hat.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
+                         family = beta_family(),
+                         ziformula =~1+stim*sa2hat.x+vasRT_3+(1|id)+(1|id:location),
+                         data = normal %>% filter(stim != "NaN"))
+
+summary(m_cold_feel2)
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
 

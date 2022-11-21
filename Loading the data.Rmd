@@ -1,0 +1,134 @@
+---
+title: "TPL-analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse,ggpubr,brms, lmerTest,rethinking,lme4,DHARMa,glmmTMB)
+```
+
+
+
+```{r}
+#loading the data
+setwd("~")
+cues_even = read.csv("contingency_even.csv")
+cues_uneven = read.csv("contingency_uneven.csv")
+
+cues_even$sequence = NULL
+cues_uneven$sequence = NULL
+
+
+setwd("~/qst location")
+loc1 = read.csv("location_1.csv", header = F)
+loc4 = read.csv("location_4.csv", header = F)
+
+setwd("~/Data")
+rawfiles <- list.files(pattern="*.tsv$", recursive = T)
+
+
+
+
+qst = data.frame(NULL)
+painlearn = data.frame(NULL)
+
+for (i in 1:length(rawfiles)){
+  if (str_detect(rawfiles[i],"qst") == TRUE){
+    qst1 = read.delim(rawfiles[i])
+    qst = rbind(qst,qst1)
+    
+  } else{
+    painlearning1 = read.delim(rawfiles[i])
+    if(painlearning1[1,4] == 1){
+      painlearning1 = cbind(painlearning1,cues_uneven)
+      painlearning1$location = loc1$V1
+    } else if(painlearning1[1,4] == 4){
+      painlearning1 = cbind(painlearning1,cues_even)
+      painlearning1$location = loc4$V1
+    }
+    painlearn = rbind(painlearn,painlearning1)
+    
+  }}
+  
+raw = painlearn
+
+raw$cohort = as.factor(raw$cohort)
+raw$stim = as.factor(raw$stim)
+raw$predResp = as.factor(raw$predResp)
+raw$predAcc = as.factor(raw$predAcc)
+raw$stim = as.character(raw$stim)
+raw$stim = as.factor(raw$stim)
+raw$block_type = as.factor(raw$block_type)
+raw$sequence = as.factor(raw$sequence)
+raw$desired_prob = as.factor(raw$desired_prob)
+raw$blockNumber = as.factor(raw$blockNumber)
+raw$cue = as.factor(raw$cue)
+raw$location = as.factor(raw$location)
+
+make_remover = function(data, prob){
+g = data %>% filter(as.character(predResp) == "NaN") %>% dplyr::group_by(id) %>% dplyr::summarize(n())
+
+q = data %>% filter(is.nan(vasResp_1) == T | is.nan(vasResp_2) == T | is.nan(vasResp_3) == T)
+
+q$sort = ifelse(is.nan(q$vasResp_1) == T & is.nan(q$vasResp_2) == T & is.nan(q$vasResp_3) == T, q$sort <- 0, q$sort <- 1)
+
+q1 = filter(q, sort == 1)
+
+g1 = q1 %>% dplyr::group_by(id) %>% dplyr::summarize(n())
+
+g = data.frame(g)
+g1 = data.frame(g1)
+
+t = g %>% filter(n..>306*prob)
+t1 = g1 %>% filter(n..>306*prob)
+
+tt <<- rbind(t,t1)
+
+
+removers <<- tt
+}
+
+
+
+removers = make_remover(raw,0.1)
+raw = raw %>% filter(id %in% removers$id == F)
+thresh = qst %>% filter(id %in% removers$id == F)
+
+
+
+
+
+
+
+levels(raw$cue) = c("low-tone","high-tone")
+levels(raw$stim) = c("cold","warm","TGI","NaN")
+levels(raw$predResp) = c("cold","warm","NaN")
+levels(raw$predAcc) = c("Wrong","Right","TGI", "Wrong")
+
+rm(list=setdiff(ls(), c("thresh","raw", "removers")))
+
+
+is_outlier <- function(x) {
+  x < quantile(x, 0.25, na.rm = T) - (1.5 * IQR(x, na.rm = T)) | x > quantile(x, 0.75, na.rm = T) + (1.5 * IQR(x, na.rm = T))
+}
+
+
+```
+
+```{r}
+
+raw$expected = ifelse(raw$desired_prob == "0.5" & raw$stim != "TGI", a <- "N",
+  ifelse(raw$desired_prob == "0.18" & raw$cue == "low-tone" & raw$stim == "cold", a <- "E", 
+       ifelse(raw$desired_prob == "0.18" & raw$cue == "high-tone" & raw$stim == "warm", a <- "E",
+              ifelse(raw$desired_prob == "0.82" & raw$cue == "low-tone" & raw$stim == "warm", a <- "E",
+                     ifelse(raw$desired_prob == "0.82" & raw$cue == "high-tone" & raw$stim == "cold", a <- "E", a<- "UE")))))
+
+raw$expected = ifelse(raw$stim == "TGI", a<-"TGI",b<- raw$expected)
+
+raw$expected = as.factor(raw$expected)
+
+```
+
+
+```
+

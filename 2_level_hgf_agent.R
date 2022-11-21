@@ -4,11 +4,11 @@ sigmoid = function(x) {
 }
 
 
-hgf_agent = function(u,omega,beta,c){
+hgf_agent = function(u,omega,beta){
 
 
 
-ntrials = 306
+ntrials = 307
 
 mu2 = array(NA,ntrials)
 sa2 = array(NA,ntrials)
@@ -47,7 +47,7 @@ for  (t in 2:ntrials){
   
   
   
-  exp_p[t] = mu1hat[t]^beta/((mu1hat[t]^beta)+(1-mu1hat[t])^(beta+c))
+  exp_p[t] = mu1hat[t]^beta/((mu1hat[t]^beta)+(1-mu1hat[t])^(beta))
   
   
   
