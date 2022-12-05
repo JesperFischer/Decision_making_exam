@@ -2,10 +2,10 @@ model {
 
   omega ~ dnorm(-3.6,1)
   beta ~ dgamma(1,1)
-  c ~ dnorm(0,5)
-  
-  mu2[1] ~ dnorm(0,1)
-  sa2[1] ~ dnorm(0.4,5)
+  #mu2[1] ~ dnorm(0.1,1)
+  #sa2[1] ~ dnorm(0.25,1)
+  mu2[1] <- 0
+  sa2[1] ~ dnorm(0.5,1)
   sa2hat[1] <- 0
   mu1hat[1] <- 0
   sa1hat[1] <- 0
@@ -30,7 +30,7 @@ model {
     
     
 
-    exp_p[t] <- mu1hat[t]^beta/((mu1hat[t]^beta)+(1-mu1hat[t])^(beta+c))
+    exp_p[t] <- mu1hat[t]^beta/((mu1hat[t]^beta)+(1-mu1hat[t])^(beta))
 
     
     y[t] ~ dbern(exp_p[t])

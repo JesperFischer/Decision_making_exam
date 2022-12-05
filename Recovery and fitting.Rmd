@@ -82,7 +82,6 @@ yup = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
                  DIC = rep(samples$BUGSoutput$DIC,ntrials))
 
 
-str(samples)
 
 ```
 
@@ -298,14 +297,11 @@ ggplot(data = real_data3, aes(x = kappa, y = sim_data3$kappa))+geom_point()+ggti
 
 
 
-```
-
-
-
 
 #Idk
 ```{r model recovery}
 source("2_level_hgf_agent_cmc.R")
+
 #simualting from cmc model
 
 DIC_n_cmc = array(NA,1000)
@@ -419,6 +415,7 @@ for (ii in 1:10){
 
 ```
 
+
 #idk
 ```{r}
 
@@ -440,12 +437,8 @@ sum2[i] = sum(DIC_cmc_cmc[timer[i]:(i*100)]>DIC_n_cmc[timer[i]:(i*100)])
 
 
 
+```{r lets run this cmc:}
 
-
-
-
-
-```{r lets run this cmc: }
 cmc_data = data.frame(beta = NA,c = NA,da = NA,deviance = NA,mu1hat = NA,mu2 = NA, omega = NA,sa1hat = NA, sa2 = NA,sa2hat = NA,ntrials  = NA, id = NA, DIC = NA)
 
 timer = 0
@@ -503,6 +496,7 @@ for (i in unique(df1$id)){
 }
 
 cmc_data = cmc_data[-1,]
+
 ```
 
 
