@@ -64,10 +64,6 @@ samples <- jags.parallel(data, inits=NULL, params,
                          n.iter=3000, n.burnin=1000)
 
 
-plot(density(samples$BUGSoutput$sims.list$mu1hat))
-
-
-
 
 yup = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
                  c = rep(samples$BUGSoutput$summary[2,1],ntrials), 
@@ -80,9 +76,117 @@ yup = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
                  sa2 = samples$BUGSoutput$summary[(5+4*ntrials):(4+5*ntrials)],
                  sa2hat = samples$BUGSoutput$summary[(5+5*ntrials):(4+6*ntrials)],
                  DIC = rep(samples$BUGSoutput$DIC,ntrials))
+```
+
+
+```{r}
+
+is = c(272,286,295)
+
+ys = data.frame(1:307)
+us = data.frame(1:307)
+
+for (i in is){
+
+df = df1 %>% filter(id == i)
+df = df %>% add_row(.before = 1)
+
+y = df$predResp2
+u = df$u
+ntrials = 307
+
+u[1] = -100
+y[1] = -100
+
+
+if (length(which(is.na(u))) != 0){
+  ntrials = ntrials-length(which(is.na(u)))
+  indexs= which(is.na(u))
+  u = u[-indexs]
+  y = y[-indexs]
+}
+
+
+df2 = rbind(df2,df)
+
+ys = cbind(ys,y)
+us = cbind(us,u)
+
+}
+nsubs1 = length(is)
+ys$X1.307 = NULL
+y = as.matrix(ys)
+
+us$X1.307 = NULL
+u = as.matrix(us)
 
 
 
+
+
+data <- list("y","u","ntrials","nsubs1")
+
+
+params<-c("omega_mu","beta_mu","c_mu","omega_sigma","beta_sigma","c_sigma","c1")
+
+
+samples <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc_hier.txt", n.chains=3, 
+                         n.iter=3000, n.burnin=1000)
+
+
+samples$BUGSoutput$summary
+
+```
+
+
+
+```{r}
+#plotting
+
+yup$u = u
+yup$y = y
+yup$desired = df$desired_prob
+yup$trial = 1:307
+
+yup = yup[-1,]
+
+
+
+q1 = yup %>% dplyr::select(desired,u,y,trial,mu1hat,sa1hat,mu2,sa2) %>% mutate(level = 1, mu2 = NA, sa2 = NA)
+q2 = yup %>% dplyr::select(desired,u,y,trial,mu1hat,sa1hat,mu2,sa2) %>% mutate(level = 2, desired = NA, mu1hat = NA, u = NA, y = NA)
+q3 = rbind(q1,q2)
+
+
+col = c("#5495CB","#800CEA","#F90047")
+#green, grey, purple, yellow, 
+col = c("#00A48A","#9FADBD","#800CEA","#E39E22")
+q3$level = as.factor(q3$level)
+p_size = 0.5
+p_adj = 0.01
+q3$u = ifelse(q3$u == 0 , a <- q3$u-p_adj, b <- q3$u+p_adj)
+q3$y = ifelse(q3$y == 0 , a <- q3$y+p_adj,b <- q3$y-p_adj)
+
+trajectories = q3 %>% mutate(level = factor(level, labels = c("Predictions","Expectations")),level = relevel(level, ref = "Expectations"),lower1 = mu1hat-sa1hat, upper1 = mu1hat+sa1hat, lower2 = mu2-sa2, upper2 = mu2+sa2, desired = as.numeric(as.character(desired))) %>%
+  ggplot(aes())+
+  facet_wrap(~level, scales = "free",nrow = 2)+
+  geom_point(aes(x = trial, y = y+0.05, col = "#f3d8a6"), size = p_size, show.legend = FALSE)+
+  geom_point(aes(x = trial, y = u-0.05, col = "#00A48A"), size = p_size, show.legend = FALSE)+
+  #ylab(expression(paste(hat(mu[1]),"                          ",mu[2],"\n"))) +
+  geom_line(aes(x = trial, y = mu1hat, col = "a"), show.legend = FALSE)+
+#  geom_line(aes(x = trial, y = learn_rate1))+ #learning rate
+  geom_ribbon(aes(x = trial, ymax = upper1, ymin = lower1, alpha = 0.5, fill = "#4c72b0"), show.legend = FALSE)+
+  geom_ribbon(aes(x = trial, ymax = upper2, ymin = lower2, alpha = 0.5, fill  = "#c44e52"), show.legend = FALSE)+geom_line(aes(x = trial, y = desired), size = 1.5)+
+    geom_line(aes(x = trial, y = mu2, col = "d"), show.legend = FALSE)+
+  scale_color_manual(values = c("#00A48A","#f3d8a6","#c44e52", "#366dc7"))+
+  scale_fill_manual(values = c("#c44e52","#4c72b0"))+
+  theme_classic()+
+  theme(text = element_text(size=14))+
+  ylab(" ")
+
+
+
+trajectories
 ```
 
 
@@ -499,6 +603,17 @@ cmc_data = cmc_data[-1,]
 
 ```
 
+```{r}
+#write.csv(cmc_data, "cmc_data.csv")
+```
+
+
+```{r}
+qq %>% filter(sequence == 1) %>% ggplot(aes(x = trial, y = desired_prob))+geom_line()
+qq = inner_join(df1, cmc_data, by = c("id","trial"))
+qq %>% filter(trial == 1) %>% ggplot(aes(y = c, x = as.factor(sequence)))+geom_boxplot(notch = T)
+
+```
 
 
 ```{r lets run this normal: }
@@ -590,8 +705,6 @@ yes %>% group_by(id) %>% filter(row_number()==1) %>% ggplot(aes(y = c, fill = as
 ```{r}
 
 #There is a problem of that 1 is high-tone = cold but also low tone = warm (so what drives the effect??)
-
-
 
 k = 0
 sequence = array(NA,length(unique(df1$id)))

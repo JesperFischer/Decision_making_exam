@@ -10,7 +10,7 @@ c_mu ~ dnorm(0, 0.5)
 c_sigma ~ dnorm(0.5, 1)
 
 
-  for (s in 1:nsubs1){
+  for (s in 1:nsubs){
   
     omega[s] ~ dnorm(omega_mu,omega_sigma)
     beta[s] ~ dgamma(beta_mu,beta_sigma)

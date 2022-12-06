@@ -1,48 +1,48 @@
 model {
 
-omega_mu ~ dnorm(-4,4)
+omega_mu ~ dnorm(-4,2)
 omega_sigma ~ dnorm(1,1)
 
-beta_mu ~ dgamma(2,4)
+beta_mu ~ dgamma(2,2)
 beta_sigma ~ dgamma(1,1)
 
 c_mu ~ dnorm(0, 0.5)
 c_sigma ~ dnorm(0.5, 1)
 
-alpha ~ dnorm(0,1)
+alpha ~ dnorm(0,0.5)
 
   for (s in 1:nsubs1){
   
-    omega[s] ~ dnorm(omega_mu,omega_sigma)
-    beta[s] ~ dgamma(beta_mu,beta_sigma)
+    omega1[s] ~ dnorm(omega_mu,omega_sigma)
+    beta1[s] ~ dgamma(beta_mu,beta_sigma)
     c1[s] ~ dnorm(c_mu+(alpha/2),c_sigma)
     
-    mu2[1,s] <- 0
-    sa2[1,s] ~ dnorm(0.5,1)
-    sa2hat[1,s] <- 0
-    mu1hat[1,s] <- 0
-    sa1hat[1,s] <- 0
-    da[1,s] <- 0
-    exp_p[1,s] <- 0.5
+    mu21[1,s] <- 0
+    sa21[1,s] ~ dnorm(0.5,1)
+    sa2hat1[1,s] <- 0
+    mu1hat1[1,s] <- 0
+    sa1hat1[1,s] <- 0
+    da1[1,s] <- 0
+    exp_p1[1,s] <- 0.5
     
     for (t in 2:ntrials){
     
-      sa2hat[t,s] <- sa2[t-1,s]+exp(omega[s])
-      mu1hat[t,s] <- ilogit(mu2[t-1,s])
+      sa2hat1[t,s] <- sa21[t-1,s]+exp(omega1[s])
+      mu1hat1[t,s] <- ilogit(mu21[t-1,s])
       
       
-      sa1hat[t,s] <- mu1hat[t,s]*(1-mu1hat[t,s])
+      sa1hat1[t,s] <- mu1hat1[t,s]*(1-mu1hat1[t,s])
       
-      da[t,s] <- u[t,s]-mu1hat[t,s]
+      da1[t,s] <- u1[t,s]-mu1hat1[t,s]
       
-      sa2[t,s] <- 1/((1/sa2hat[t,s])+sa1hat[t,s])
+      sa21[t,s] <- 1/((1/sa2hat1[t,s])+sa1hat1[t,s])
       
-      mu2[t,s] <- mu2[t-1,s]+da[t,s]*sa2[t,s]
+      mu21[t,s] <- mu21[t-1,s]+da1[t,s]*sa21[t,s]
       
-      exp_p[t,s] <- mu1hat[t,s]^beta[s]/((mu1hat[t,s]^beta[s])+(1-mu1hat[t,s])^(beta[s]+c1[s]))
+      exp_p1[t,s] <- mu1hat1[t,s]^beta1[s]/((mu1hat1[t,s]^beta1[s])+(1-mu1hat1[t,s])^(beta1[s]+c1[s]))
   
       
-      y[t,s] ~ dbern(exp_p[t,s])
+      y1[t,s] ~ dbern(exp_p1[t,s])
       
     }
   }
@@ -69,7 +69,7 @@ alpha ~ dnorm(0,1)
       
       sa1hat[t,s] <- mu1hat[t,s]*(1-mu1hat[t,s])
       
-      da[t,s] <- u[t,s]-mu1hat[t,s]
+      da[t,s] <- u4[t,s]-mu1hat[t,s]
       
       sa2[t,s] <- 1/((1/sa2hat[t,s])+sa1hat[t,s])
       
@@ -78,14 +78,8 @@ alpha ~ dnorm(0,1)
       exp_p[t,s] <- mu1hat[t,s]^beta[s]/((mu1hat[t,s]^beta[s])+(1-mu1hat[t,s])^(beta[s]+c4[s]))
   
       
-      y[t,s] ~ dbern(exp_p[t,s])
+      y4[t,s] ~ dbern(exp_p[t,s])
       
     }
   }
-
-  
-  
-  
-  
-  
   }
