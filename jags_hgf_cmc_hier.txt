@@ -1,10 +1,10 @@
 model {
 
-omega_mu ~ dnorm(-4,4)
-omega_sigma ~ dnorm(1,1)
+omega_mu ~ dnorm(-4,0.5)
+omega_sigma ~ dnorm(0.5,0.5)
 
-beta_mu ~ dgamma(2,4)
-beta_sigma ~ dgamma(1,1)
+beta_mu ~ dgamma(2,0.5)
+beta_sigma ~ dgamma(0.5,0.5)
 
 c_mu ~ dnorm(0, 0.5)
 c_sigma ~ dnorm(0.5, 1)
@@ -45,10 +45,6 @@ c_sigma ~ dnorm(0.5, 1)
       
     }
   }
-  
-  
-  
-  
   
   
   
