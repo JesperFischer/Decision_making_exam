@@ -1,64 +1,69 @@
-functions{
-  
-  real unitsquare(x, beta){
-    return x^beta/((x^beta)+(1-x)^beta)
-  }
+data {
+  int<lower=0> ntrials;
+  int<lower=0> nsubs;
+  int<lower=0,upper=1> y[ntrials, nsubs];
+  int<lower=0,upper=1> u[ntrials, nsubs];
 }
 
-data {
-  int<lower=0> N;   //trials (306)
-  int u[N];         //inputs
-  int y[N];         //responses
-}
 parameters {
-  real omega;
-  real<lower=0> beta;
+  real mu_omega;
+  real<lower=0> sigma_omega;
+  real<lower=0> mu_beta;
+  real<lower=0> sigma_beta;
+  real omega[nsubs];
+  real<lower=0> beta[nsubs];
 }
 
 
 
 transformed parameters {
+  real mu2[ntrials,nsubs];
+  real<lower=0> sa2[ntrials,nsubs];
+  real sa2hat[ntrials,nsubs];
+  real mu1hat[ntrials,nsubs];
+  real sa1hat[ntrials,nsubs];
+  real da[ntrials,nsubs];
+  real exp_p[ntrials,nsubs];
   
-  real<lower=0,upper=1> mu1hat[N];
-  real<lower=0,upper=0.25> sa1hat[N];
-  real<lower=0> sa2hat[N];
-  real<lower=-1,upper=1> da[N];
-  real mu2[N];
-  real<lower=0> sa2[N];
-  
-  
-  for (k in 2:N){
-    mu1hat[k] = inv_logit(mu2[k]);       //first level belief (prediction belief);
-    sa1hat[k] = mu1hat[k]*(1-mu1hat[k]); //first level prediction uncertainty;
-    da[k] = u[k]-mu1hat[k];              //prediction error;
-    //updates
-    sa2hat[k] = sa2[k-1]+exp(omega);
-    sa2[k] = 1/((1/sa2hat[k])+sa1hat[k]);
-    mu2[k] = mu2[k-1]+da[k]*sa2[k];
+
+  for (s in 1:nsubs) {
+    mu2[1,s] = 0;
+    sa2[1,s] = 2;
     
-    
+    for (t in 2:ntrials) {
+  
+      sa2hat[t,s] = sa2[t-1,s]+exp(omega[s]);
+      mu1hat[t,s] = inv_logit(mu2[t-1,s]);
+      
+      sa1hat[t,s] = mu1hat[t,s]*(1-mu1hat[t,s]);
+      
+      da[t,s] = u[t,s]-mu1hat[t,s];
+      
+      sa2[t,s] = 1/((1/sa2hat[t,s])+sa1hat[t,s]);
+      
+      mu2[t,s] = mu2[t-1,s]+da[t,s]*sa2[t,s];
+      
+      exp_p[t,s] = (mu1hat[t,s]^beta[s])/((mu1hat[t,s]^beta[s])+(1-mu1hat[t,s])^(beta[s]));
   }
-  
-  
-  //response model:
-  
-  
 }
+}
+
 
 
 model {
+  mu_omega ~ normal(-1,0.3);
+  sigma_omega ~ normal(1,0.2);
+  sigma_beta~ normal(0.3,0.2);
+  mu_beta ~ gamma(4,2);
   
-  for (j in 1:N){
-    y[j] ~ unitsquare(mu1hat[j],beta);
-  }
-  
-  mu2 ~ normal(0,sa2);
-  sa2 ~ normal(0,0);
-  omega ~ normal(-3.6,3);
-  beta ~ normal(2,5);
-  
-  
-
+  for (s in 1:nsubs) {
+    omega[s] ~ normal(mu_omega,sigma_omega);
+    beta[s] ~ normal(mu_beta,sigma_beta);
     
+    for (t in 2:ntrials) {
+      
+      y[t,s] ~ bernoulli_logit(exp_p[t,s]);
+  }
 }
-  
+}
+

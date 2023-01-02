@@ -1,0 +1,262 @@
+---
+title: "stancode"
+author: "Jesper Fischer Ehmsen"
+date: '2022-12-28'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(cmdstanr)
+library(bayesplot)
+```
+
+```{r}
+
+setwd("/home/jespere")
+df1 = read.csv("trajfeel2.csv")
+
+df = df1 %>% filter(id == 265)
+
+
+y = df$predResp2
+u = df$u
+ntrials = 306
+u = replace_na(u, 0.5)
+y = replace_na(u, 0.5)
+
+u
+```
+
+```{r}
+
+#datalist with number of trials (N) number of total responses per intensity (n), number of more responses per intensity (y), different intensities (x)
+data = list(u = u, y = y, ntrials = ntrials)
+
+#complieing stan model:
+mod = cmdstan_model("HGF_2level.stan")
+
+#running the model:
+fit = mod$sample(data = data,
+                 chains = 4,
+                 parallel_chains = 4,refresh = 500, iter_warmup = 2000, iter_sampling = 2000)
+
+#summary
+fit$summary()
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+df1 = df %>% filter(id %in% unique(df$id)[c(1:100)])
+
+cleanu = df1 %>% dplyr::select(u,id,trial)
+
+cleanu$u = replace_na(cleanu$u, 0)
+
+cleanu = cleanu %>% pivot_wider(names_from = c("id"), values_from = c("u"))
+
+cleanu$trial = NULL
+
+cleany = df1 %>% dplyr::select(predResp2,id,trial)
+
+cleany$predResp2 = as.numeric(cleany$predResp2)
+
+cleany$predResp2 = replace_na(cleany$predResp2, 0)
+
+
+cleany = cleany %>% pivot_wider(names_from = c("id"), values_from = c("predResp2"))
+
+cleany$trial = NULL
+
+cleanu = as.matrix(cleanu)
+cleany = as.matrix(cleany)
+
+cleanu[is.na(cleanu)] <- 0
+cleany[is.na(cleany)] <- 0
+
+
+#datalist with number of trials (N) number of total responses per intensity (n), number of more responses per intensity (y), different intensities (x)
+data = list(u = cleanu, y = cleany, ntrials = 306, nsubs = ncol(cleanu))
+
+#complieing stan model:
+mod = cmdstan_model("HGF_2level.stan")
+
+#running the model:
+fit = mod$sample(data = data,
+                 chains = 4,
+                 parallel_chains = 4,refresh = 1000, iter_warmup = 2000, iter_sampling = 2000)
+
+
+#summary
+fit$summary()
+
+subject_parm = c("mu_omega", "mu_beta","omega","beta")
+
+bayesplot::mcmc_dens_chains(fit$draws(subject_parm))
+
+
+
+mcmc_trace(fit$draws(c("mu_omega")))
+
+bayesplot::mcmc_dens_chains(fit$draws(c("beta[5]")))
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+
+cleanu = df1 %>% dplyr::select(u,id,trial)
+
+cleanu$u = replace_na(cleanu$u, 0)
+
+cleanu = cleanu %>% pivot_wider(names_from = c("id"), values_from = c("u"))
+
+cleanu$trial = NULL
+
+cleany = df1 %>% dplyr::select(predResp2,id,trial)
+
+cleany$predResp2 = as.numeric(cleany$predResp2)
+
+cleany$predResp2 = replace_na(cleany$predResp2, 0)
+
+
+cleany = cleany %>% pivot_wider(names_from = c("id"), values_from = c("predResp2"))
+
+cleany$trial = NULL
+
+cleanu = as.matrix(cleanu)
+cleany = as.matrix(cleany)
+
+cleanu[is.na(cleanu)] <- 0
+cleany[is.na(cleany)] <- 0
+
+
+u = cleanu
+y = cleany
+#datalist with number of trials (N) number of total responses per intensity (n), number of more responses per intensity (y), different intensities (x)
+data = list(u = u, y = y, ntrials = 306, nsubs = ncol(cleanu))
+
+
+
+
+data <- list("y","u","ntrials","nsubs")
+
+
+params<-c("omega_mu","beta_mu","omega","beta","sa2","sa2hat","mu1hat")
+
+
+samples <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/HHGF.txt", n.chains=4, 
+                         n.iter=3000, n.burnin=1000)
+
+
+
+hier_omega = samples$BUGSoutput$median$omega
+
+hier_beta = samples$BUGSoutput$median$beta
+
+
+```
+
+
+
+```{r one at a time}
+u1 = u
+y1 = y
+
+
+beta = array(NA,nsubs)
+
+omega = array(NA,nsubs)
+
+mu1hat = array(NA,c(ntrials,nsubs))
+sa2hat = array(NA,c(ntrials,nsubs))
+sa2 = array(NA,c(ntrials,nsubs))
+
+
+
+for (i in 1:nsubs){
+u = u1[,i]
+y = y1[,i]
+
+data <- list("y","u","ntrials")
+
+params<-c("omega","beta", "mu1hat","sa2","sa2hat")
+
+samples1 <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
+                         n.iter=3000, n.burnin=1000)
+
+beta[i] = samples1$BUGSoutput$median$beta
+
+omega[i] = samples1$BUGSoutput$median$omega
+
+mu1hat[1:306,i] = samples1$BUGSoutput$median$mu1hat
+
+sa2[1:306,i] = samples1$BUGSoutput$median$sa2
+
+sa2hat[1:306,i] = samples1$BUGSoutput$median$sa2hat
+
+
+print(i)
+}
+
+
+
+pooling = data.frame(nopool = beta,pool = hier_beta)
+
+pooling$id = unique(df1$id)
+
+pooling_beta = pivot_longer(pooling, cols = c("pool","nopool"))
+
+
+pooling = data.frame(nopool = omega,pool = hier_omega)
+
+pooling$id = unique(df1$id)
+
+pooling_omega = pivot_longer(pooling, cols = c("pool","nopool"))
+
+
+pool_plot = inner_join(pooling_beta,pooling_omega, by = c("id","name"))
+
+pool_plot %>% ggplot(aes(x = value.x, y = value.y, group = id, col = name))+geom_point()+geom_path(arrow = arrow(length = unit(.02, "npc"), ends = "first"),
+    show.legend = FALSE)+ylab("omega")+xlab("beta")+ geom_point(aes(x = mean(hier_beta), y = mean(hier_omega), size = 5), col = "red")+ geom_point(aes(x = mean(beta), y = mean(omega), size = 5), col = "blue")
+
+
+```
+
+
+```{r}
+
+df1$sa22 = sa2_hierdata$value
+
+library(gamlss)
+expectation_sa2_burn_HGF <-gamlss(burnbeta ~ sa2*stim+vasRT_3+trial+random(id),
+           nu.formula = ~ sa2*stim+vasRT_3+trial+random(id),
+           tau.formula = ~ sa2*stim+vasRT_3+trial+random(id),
+           data = dataaaa,
+           family = BEINF(mu.link = "logit",sigma.link = "logit",nu.link = "logit",tau.link = "logit"),trace = F)
+
+```
+

@@ -1,11 +1,9 @@
 model {
 
-  omega ~ dnorm(-3.6,1)
+  omega ~ dnorm(-4,0.5)
   beta ~ dgamma(1,1)
-  c ~ dnorm(0,5)
+  c ~ dnorm(0,0.5)
   
-  #mu2[1] ~ dnorm(0.1,1)
-  #sa2[1] ~ dnorm(0.25,1)
   mu2[1] <- 0
   sa2[1] ~ dnorm(0.5,1)
   sa2hat[1] <- 0

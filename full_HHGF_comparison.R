@@ -57,7 +57,7 @@ hgf_agent_c_hier_compar = function(u,u4,mu_omega,sa_omega,mu_beta,sa_beta,mu_c,s
   data1 = as.data.frame(NULL)
   
   for (s in 1:(nsubs/2)){
-    alpha1 = rtrunc(1,"norm",lower = 0, mean = mu_alpha, sd = sa_alpha)
+    alpha1 = rnorm(1, mean = mu_alpha, sd = sa_alpha)
     c1 = rnorm(1,mu_c+(alpha1/2),sa_c)
     omega1 = rnorm(1,mu_omega,sa_omega)
     beta1 = rtrunc(1, "norm", lower = 0, mean = mu_beta,sd = sa_beta)

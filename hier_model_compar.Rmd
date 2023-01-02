@@ -1,0 +1,198 @@
+---
+title: "hier_model_compar"
+author: "Jesper Fischer Ehmsen"
+date: '2022-12-13'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r}
+
+df1 = read.csv("data.csv")
+
+```
+
+
+
+
+```{r hierachical 2-level comparison}
+
+is1 = df1 %>% filter(sequence == 1) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
+
+is1 = as.matrix(is1)
+
+ys = data.frame(1:307)
+us = data.frame(1:307)
+
+df2 = data.frame(NULL)
+
+for (i in is1[,1]){
+df = df1 %>% filter(id == i)
+if(nrow(df) != 306){
+  next
+}
+df = df %>% add_row(.before = 1)
+
+y = df$predResp2
+u = df$u
+ntrials = 307
+
+u[1] = -100
+y[1] = -100
+
+
+df2 = rbind(df2,df)
+
+ys = cbind(ys,y)
+us = cbind(us,u)
+
+}
+nsubs1 = length(is1[,1])
+ys$X1.307 = NULL
+y1 = as.matrix(ys)
+
+us$X1.307 = NULL
+u1 = as.matrix(us)
+```
+
+
+```{r}
+is4 = df1 %>% filter(sequence == 4) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
+
+
+is4 = as.matrix(is4)
+
+ys = data.frame(1:307)
+us = data.frame(1:307)
+
+ids = data.frame(NULL)
+for (i in is4[,1]){
+
+df = df1 %>% filter(id == i)
+if(nrow(df) != 306){
+  next
+}
+df = df %>% add_row(.before = 1)
+
+y = df$predResp2
+u = df$u
+ntrials = 307
+
+u[1] = -100
+y[1] = -100
+
+ids=rbind(ids,i)
+
+#if (length(which(is.na(u))) != 0){
+#  ntrials = ntrials-length(which(is.na(u)))
+#  indexs= which(is.na(u))
+#  u = u[-indexs]
+#  y = y[-indexs]
+#}
+
+
+df2 = rbind(df2,df)
+
+ys = cbind(ys,y)
+us = cbind(us,u)
+
+}
+nsubs4 = length(is4[,1])
+ys$X1.307 = NULL
+y4 = as.matrix(ys)
+
+us$X1.307 = NULL
+u4 = as.matrix(us)
+```
+
+
+```{r hierachical 2-level}
+
+u1[is.na(u1)] <- 0
+y1[is.na(y1)] <- 0
+
+u4[is.na(u4)] <- 0
+y4[is.na(y4)] <- 0
+
+nsubs1 = ncol(y1)
+nsubs4 = ncol(y4)
+
+
+data <- list("y1","u1","y4","u4","ntrials","nsubs1","nsubs4")
+
+
+params<-c("omega_mu","beta_mu","c_mu","omega_sigma","beta_sigma","c_sigma","c1","omega1","beta1","omega4","beta4","c4", "alpha")
+
+
+samples <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc_hier_compar_prior.txt", n.chains=3, 
+                         n.iter=6000, n.burnin=2000)
+
+
+plot(density(samples$BUGSoutput$sims.list$alpha))
+
+alpha_prior = rnorm(10000,0,4)
+alpha_post = samples$BUGSoutput$sims.list$alpha
+
+alpha_plot1 = data.frame() %>% ggplot()+geom_density(aes(x = alpha_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = alpha_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)+theme_classic()+geom_vline(xintercept = 0)+xlab(expression(alpha))+coord_cartesian(xlim = c(-10,10), ylim = c(0,20))+theme(text=element_text(size=18))
+
+alpha_plot2 = data.frame() %>% ggplot()+geom_density(aes(x = alpha_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = alpha_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)+theme_classic()+geom_vline(xintercept = 0)+xlab(expression(alpha))+coord_cartesian(xlim = c(-2,2), ylim = c(0,20))+theme(text=element_text(size=18))
+
+c_prior = rnorm(1000,0,4)
+c_post = samples$BUGSoutput$sims.list$c_mu
+
+
+c_prior1 = data.frame() %>% ggplot()+geom_density(aes(x = c_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = c_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)+theme_classic()+geom_vline(xintercept = 0)+xlab(expression(gamma))+coord_cartesian(xlim = c(-10,10), ylim = c(0,20))+theme(text=element_text(size=18))
+
+
+c_prior2 = data.frame() %>% ggplot()+geom_density(aes(x = c_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = c_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)+theme_classic()+geom_vline(xintercept = 0)+xlab(expression(gamma))+coord_cartesian(xlim = c(-2,2), ylim = c(0,20))+theme(text=element_text(size=18))
+
+
+
+
+library(patchwork)
+
+
+prior_posterior_updates = (alpha_plot1+alpha_plot2)/(c_prior1+c_prior2)
+prior_posterior_updates
+
+```
+
+
+```{r}
+library(logspline)
+#bayesfactor calculations alpha
+post_fit_alpha = logspline(samples$BUGSoutput$sims.list$alpha)
+post_fit_alpha = dlogspline(0, post_fit_alpha)
+#prior
+null_fit_alpha = dnorm(0,0,(1/sqrt(4)))
+
+post_fit_alpha/null_fit_alpha
+
+#gamma
+
+post_fit_gamma = logspline(samples$BUGSoutput$sims.list$c_mu)
+post_fit_gamma = dlogspline(0, post_fit_gamma)
+#prior
+null_fit_gamma = dnorm(0,0,(1/sqrt(4)))
+
+post_fit_gamma/null_fit_gamma
+
+
+```
+
+
+```{r}
+#traceplots of parameters:
+
+traceplot(samples, varname = "alpha")
+
+
+```
+

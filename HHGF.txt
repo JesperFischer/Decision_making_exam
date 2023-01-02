@@ -1,0 +1,42 @@
+model {
+
+omega_mu ~ dnorm(-4,0.5)
+omega_sigma ~ dnorm(0.5,0.5)
+
+beta_mu ~ dnorm(0,1)T(0,)
+beta_sigma ~ dgamma(1,.1)
+
+  
+  for (s in 1:nsubs){
+  
+    omega[s] ~ dnorm(omega_mu,omega_sigma)
+    beta[s] ~ dgamma(beta_mu,beta_sigma)
+
+    mu2[1,s] <- 0
+    sa2[1,s] ~ dnorm(0.1,1)T(0,)
+    sa2hat[1,s] <- 0
+    mu1hat[1,s] <- 0
+    sa1hat[1,s] <- 0
+    da[1,s] <- 0
+    exp_p[1,s] <- 0.5
+    
+    for (t in 2:ntrials){
+    
+      sa2hat[t,s] <- sa2[t-1,s]+exp(omega[s])
+      mu1hat[t,s] <- ilogit(mu2[t-1,s])
+      
+      sa1hat[t,s] <- mu1hat[t,s]*(1-mu1hat[t,s])
+      
+      da[t,s] <- u[t,s]-mu1hat[t,s]
+      
+      sa2[t,s] <- 1/((1/sa2hat[t,s])+sa1hat[t,s])
+      
+      mu2[t,s] <- mu2[t-1,s]+da[t,s]*sa2[t,s]
+      
+      exp_p[t,s] <- mu1hat[t,s]^beta[s]/((mu1hat[t,s]^beta[s])+(1-mu1hat[t,s])^(beta[s]))
+
+      y[t,s] ~ dbern(exp_p[t,s])
+      
+    }
+  }
+  }

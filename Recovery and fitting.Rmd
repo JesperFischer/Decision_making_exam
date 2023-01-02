@@ -106,23 +106,6 @@ samples <- jags.parallel(data, inits=NULL, params,
 
 ```
 
-```{r}
-rtrunc <- function(n, distr, lower = -Inf, upper = Inf, ...){
-  makefun <- function(prefix, FUN, ...){
-    txt <- paste(prefix, FUN, "(x, ...)", sep = "")
-    function(x, ...) eval(parse(text = txt))
-  }
-  if(length(n) > 1) n <- length(n)
-  pfun <- makefun("p", distr, ...)
-  qfun <- makefun("q", distr, ...)
-  lo <- pfun(lower, ...)
-  up <- pfun(upper, ...)
-  u <- runif(n, lo, up)
-  qfun(u, ...)
-}
-
-```
-
 
 
 
@@ -149,12 +132,12 @@ for (i in 1:100){
   u4[1] = -100
   
     
-  nsubs = 270
+  nsubs = 250
   
-  mu_c = runif(1,-2,2)
-  mu_beta = runif(1,0,5)
-  mu_omega = rnorm(1,-4,2)
-  mu_alpha = runif(1, -1, 1)
+  mu_c = runif(1,-4,4)
+  mu_beta = runif(1,0,3)
+  mu_omega = rnorm(1,-4,3)
+  mu_alpha = runif(1, -3, 3)
   
   sa_c = rtrunc(1,"norm",lower = 0, mean = 0.4, sd = 0.1)
   sa_beta = rtrunc(1,"norm",lower = 0, mean = 0.4, sd = 0.1)
@@ -169,14 +152,14 @@ for (i in 1:100){
   
   v = hgf_agent_c_hier_compar(u,u4,mu_omega = mu_omega,sa_omega = sa_omega,mu_beta = mu_beta,sa_beta = sa_beta, mu_c = mu_c,sa_c = sa_c,nsubs = nsubs, mu_alpha = mu_alpha, sa_alpha = sa_alpha)
   
-  y1 = v %>% filter(seq == 1) %>% select(yhat,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "yhat", names_from = "sub") %>% mutate(trial = NULL)
+  y1 = v %>% filter(seq == 1) %>% dplyr::select(yhat,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "yhat", names_from = "sub") %>% mutate(trial = NULL)
   
   
-  y4 = v %>% filter(seq == 4) %>% select(yhat,sub)%>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "yhat", names_from = "sub")%>% mutate(trial = NULL)
+  y4 = v %>% filter(seq == 4) %>% dplyr::select(yhat,sub)%>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "yhat", names_from = "sub")%>% mutate(trial = NULL)
   
-  u1 = v %>% filter(seq == 1) %>% select(u,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "u", names_from = "sub")%>% mutate(trial = NULL)
+  u1 = v %>% filter(seq == 1) %>% dplyr::select(u,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "u", names_from = "sub")%>% mutate(trial = NULL)
   
-  u4 = v %>% filter(seq == 4) %>% select(u,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "u", names_from = "sub")%>% mutate(trial = NULL)
+  u4 = v %>% filter(seq == 4) %>% dplyr::select(u,sub) %>% mutate(sub = as.factor(sub)) %>% group_by(sub) %>% mutate(trial = 1:307) %>% pivot_wider(values_from = "u", names_from = "sub")%>% mutate(trial = NULL)
   
   
   ntrials = 307
@@ -204,25 +187,119 @@ sim_data1$deviance = NULL
 
 
 
-ggplot(data = real_data1, aes(x = mu_omega, y = sim_data1$omega_mu))+geom_point()+ggtitle("Parameter recovery for omega")+theme_classic()+ylab("recovered omega")+xlab("simulated omega")+geom_smooth(method = "lm")
+omega = ggplot(data = real_data1, aes(x = mu_omega, y = sim_data1$omega_mu))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",omega)))+theme_classic()+ylab(expression(paste("Recovered ", omega)))+xlab(expression(paste("Simulated ",omega)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
 
 
 
-ggplot(data = real_data1, aes(x = mu_beta, y = sim_data1$beta_mu))+geom_point()+ggtitle("Parameter recovery for beta")+theme_classic()+ylab("recovered beta")+xlab("simulated beta")+geom_smooth(method = "lm")
+beta = ggplot(data = real_data1, aes(x = mu_beta, y = sim_data1$beta_mu))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",beta)))+theme_classic()+ylab(expression(paste("recovered ",beta)))+xlab(expression(paste("simulated ",beta)))+theme(text=element_text(size=18))+geom_abline(aes(intercept = 0, slope = 4), col = "red")+theme(plot.title = element_text(hjust = 0.5))+geom_abline(col = "black")
 
 
-ggplot(data = real_data1, aes(x = mu_c, y = sim_data1$c_mu))+geom_point()+ggtitle("Parameter recovery for c")+theme_classic()+ylab("recovered c")+xlab("simulated c")+geom_smooth(method = "lm")
+gamma = ggplot(data = real_data1, aes(x = mu_c, y = sim_data1$c_mu))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",gamma)))+theme_classic()+ylab(expression(paste("Recovered ", gamma)))+xlab(expression(paste("Simulated ", gamma)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
 
 
-ggplot(data = real_data1, aes(x = alpha, y = sim_data1$alpha))+geom_point()+ggtitle("Parameter recovery for alpha")+theme_classic()+ylab("recovered alpha")+xlab("simulated alpha")+geom_smooth(method = "lm")
+alpha = ggplot(data = real_data1, aes(x = alpha, y = sim_data1$alpha))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",alpha)))+theme_classic()+ylab(expression(paste("Recovered ", alpha)))+xlab(expression(paste("Simulated ", alpha)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
 
-write.csv(real_data1, "real_data1_40.csv")
 
-write.csv(sim_data1, "sim_data1_40.csv")
+
+#real_data1 = read.csv("real_data1_fin.csv")
+#sim_data1 = read.csv("sim_data1_fin.csv")
+
+
+
+#write.csv(real_data1, "real_data1_fin.csv")
+#write.csv(sim_data1, "sim_data1_fin.csv")
+
+
+(omega+beta)/(gamma+alpha)
 
 ```
 
 
+```{r}
+simdata = sim_data1
+realdata = real_data1
+```
+
+
+
+
+```{r}
+#visual of response models:
+
+colors = c("#537c78","#7ba591","#cc222b","#f15b4c","#faa41b","#ffd45b")
+gradient = c("#a6c2b4","#90b4a3","#7ba591","#668777","#516b5f","#3d5047")
+
+x_log = seq(0,1,length.out = 1000)
+x_sigmoid = seq(-5,5,length.out = 1000)
+
+
+logisitic_sigmoid =  function(x,b){(x^b)/((x^b)+(1-x)^b)}
+
+logisitic_sigmoid_gamma =  function(x,b,c){(x^b)/((x^b)+((1-x)^(b+c)))}
+
+sigmoid = function(x,b){1/(1+exp(-b*x))}
+
+
+logisitic_sigmoid_ys = array(NA,c(1000,6))
+logisitic_sigmoid_gamma_ys = array(NA,c(1000,6))
+sigmoid_ys = array(NA,c(1000,6))
+
+
+t = 0
+c = -1
+for (i in seq(0,10,by = 2)){
+  c = c+1/3
+  t=t+1
+
+  y_logistic_sigmoid = logisitic_sigmoid(x_log,i)
+  y_logistic_sigmoid_gamma = logisitic_sigmoid_gamma(x_log,2,c)
+  y_sigmoid = sigmoid(x_sigmoid,i)
+  
+  
+  logisitic_sigmoid_ys[1:1000,t] = y_logistic_sigmoid
+  logisitic_sigmoid_gamma_ys[1:1000,t] = y_logistic_sigmoid_gamma
+  sigmoid_ys[1:1000,t] = y_sigmoid
+  
+  
+}
+
+
+logisitic_sigmoid_ys = as.data.frame(logisitic_sigmoid_ys)
+logisitic_sigmoid_gamma_ys = as.data.frame(logisitic_sigmoid_gamma_ys)
+sigmoid_ys = as.data.frame(sigmoid_ys)
+
+
+
+
+logisitic_sigmoid_ys = logisitic_sigmoid_ys %>% pivot_longer(cols = everything()) %>% group_by(name) %>% mutate(x = x_log)
+logisitic_sigmoid_ys$name = as.factor(logisitic_sigmoid_ys$name)
+levels(logisitic_sigmoid_ys$name) = seq(0,10,by=2)
+
+
+logs = logisitic_sigmoid_ys %>% ggplot(aes(x = x, y = value, col = as.factor(name)))+geom_path()+xlim(0,1)+scale_color_manual(values = colors)+theme_classic()+guides(color = guide_legend(title = expression(paste(beta,"|",gamma,"=0"))))+theme(text=element_text(size=30))+xlab("Expected belief")+ylab("Probability of answering 1")
+
+
+
+logisitic_sigmoid_gamma_ys = logisitic_sigmoid_gamma_ys %>% pivot_longer(cols = everything()) %>% group_by(name) %>% mutate(x = x_log)
+logisitic_sigmoid_gamma_ys$name = as.factor(logisitic_sigmoid_gamma_ys$name)
+levels(logisitic_sigmoid_gamma_ys$name) = round(seq(-2/3,2,by=1/3),2)
+logisitic_sigmoid_gamma_ys$name = as.factor(logisitic_sigmoid_gamma_ys$name)
+
+gam = logisitic_sigmoid_gamma_ys %>% ggplot(aes(x = x, y = value, col = name))+geom_path()+xlim(0,1)+scale_color_manual(values = gradient)+theme_classic()+guides(color = guide_legend(title = expression(paste(gamma,"|",beta,"=2"))))+theme(text=element_text(size=30))+xlab("Expected belief")+ylab("Probability of answering 1")
+
+
+
+sigmoid_ys = sigmoid_ys %>% pivot_longer(cols = everything()) %>% group_by(name) %>% mutate(x = x_sigmoid)
+sigmoid_ys$name = as.factor(sigmoid_ys$name)
+levels(sigmoid_ys$name) = seq(0,10,by=2)
+
+sig = sigmoid_ys %>% ggplot(aes(x = x, y = value, col = as.factor(name)))+geom_path()+xlim(-1,1)+scale_color_manual(values = colors)
+library(patchwork)
+
+
+logs+gam+plot_layout(guides = "collect")
+
+```
 
 
 
@@ -243,9 +320,9 @@ for (i in 1:100){
   u = df$u
   u[1] = -100
   
-  beta = runif(n = 1, min = 1, max = 10)
+  beta = runif(n = 1, min = 0, max = 5)
   
-  omega = runif(n = 1, min = -8, max = 1)
+  omega = rnorm(n = 1, mean = -4, sd = 2)
 
   c = runif(n = 1, min = -3, max = 3)
   
@@ -283,14 +360,20 @@ sim_data1$deviance = NULL
 
 
 
-ggplot(data = real_data1, aes(x = omega, y = sim_data1$omega))+geom_point()+ggtitle("Parameter recovery for omega")+theme_classic()+ylab("recovered omega")+xlab("simulated omega")
+
+omega = ggplot(data = real_data1, aes(x = omega, y = sim_data1$omega))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",omega)))+theme_classic()+ylab(expression(paste("Recovered ", omega)))+xlab(expression(paste("Simulated ",omega)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
 
 
 
-ggplot(data = real_data1, aes(x = beta, y = sim_data1$beta))+geom_point()+ggtitle("Parameter recovery for beta")+theme_classic()+ylab("recovered beta")+xlab("simulated beta")
+beta = ggplot(data = real_data1, aes(x = beta, y = sim_data1$beta))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",beta)))+theme_classic()+ylab(expression(paste("recovered ",beta)))+xlab(expression(paste("simulated ",beta)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
 
 
-ggplot(data = real_data1, aes(x = c, y = sim_data1$c))+geom_point()+ggtitle("Parameter recovery for c")+theme_classic()+ylab("recovered c")+xlab("simulated c")
+gamma = ggplot(data = real_data1, aes(x = c, y = sim_data1$c))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",gamma)))+theme_classic()+ylab(expression(paste("Recovered ", gamma)))+xlab(expression(paste("Simulated ", gamma)))+theme(text=element_text(size=18))+geom_abline(y=x)+theme(plot.title = element_text(hjust = 0.5))
+
+
+
+omega/beta/gamma
+
 
 ```
 
@@ -499,133 +582,6 @@ samples$BUGSoutput$summary
 
 ```
 
-
-
-```{r hierachical 2-level comparison}
-
-is1 = df1 %>% filter(sequence == 1) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
-
-is1 = as.matrix(is1)
-
-ys = data.frame(1:307)
-us = data.frame(1:307)
-
-for (i in is1[,1]){
-print(i)
-df = df1 %>% filter(id == i)
-if(nrow(df) != 306){
-  next
-}
-df = df %>% add_row(.before = 1)
-
-y = df$predResp2
-u = df$u
-ntrials = 307
-
-u[1] = -100
-y[1] = -100
-
-
-df2 = rbind(df2,df)
-
-ys = cbind(ys,y)
-us = cbind(us,u)
-
-}
-nsubs1 = length(is1[,1])
-ys$X1.307 = NULL
-y1 = as.matrix(ys)
-
-us$X1.307 = NULL
-u1 = as.matrix(us)
-```
-
-
-```{r}
-is4 = df1 %>% filter(sequence == 4) %>% group_by(id) %>% summarize(id = mean(id))
-
-
-is4 = as.matrix(is4)
-
-ys = data.frame(1:307)
-us = data.frame(1:307)
-
-for (i in is4[,1]){
-
-df = df1 %>% filter(id == i)
-if(nrow(df) != 306){
-  next
-}
-df = df %>% add_row(.before = 1)
-
-y = df$predResp2
-u = df$u
-ntrials = 307
-
-u[1] = -100
-y[1] = -100
-
-
-#if (length(which(is.na(u))) != 0){
-#  ntrials = ntrials-length(which(is.na(u)))
-#  indexs= which(is.na(u))
-#  u = u[-indexs]
-#  y = y[-indexs]
-#}
-
-
-df2 = rbind(df2,df)
-
-ys = cbind(ys,y)
-us = cbind(us,u)
-
-}
-nsubs4 = length(is4[,1])
-ys$X1.307 = NULL
-y4 = as.matrix(ys)
-
-us$X1.307 = NULL
-u4 = as.matrix(us)
-```
-
-
-```{r hierachical 2-level}
-u1[is.na(u1)] <- 0
-y1[is.na(y1)] <- 0
-
-u4[is.na(u4)] <- 0
-y4[is.na(y4)] <- 0
-
-nsubs1 = ncol(y1)
-nsubs4 = ncol(y4)
-
-
-data <- list("y1","u1","y4","u4","ntrials","nsubs1","nsubs4")
-
-
-params<-c("omega_mu","beta_mu","c_mu","omega_sigma","beta_sigma","c_sigma","c1","c4", "alpha")
-
-
-samples <- jags.parallel(data, inits=NULL, params,
-                         model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc_hier_compar.txt", n.chains=3, 
-                         n.iter=3000, n.burnin=1000)
-
-
-samples
-
-alpha_prior = rnorm(10000,0,4)
-alpha_post = samples$BUGSoutput$sims.list$alpha
-data.frame() %>% ggplot()+geom_density(aes(x = alpha_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = alpha_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)
-
-
-c_prior = rnorm(1000,0,4)
-c_post = samples$BUGSoutput$sims.list$c_mu
-
-data.frame() %>% ggplot()+geom_density(aes(x = c_prior, col = "red",fill = "red", alpha = 0.3), show.legend = FALSE)+geom_density(aes(x = c_post[,1], col = "blue",fill = "blue", alpha = 0.3), show.legend = FALSE)
-
-
-
-```
 
 
 #Idk
@@ -904,14 +860,19 @@ ndata = ndata[-1,]
 ```{r}
 sum = ndata %>% group_by(id) %>% summarize(beta = mean(beta), omega = mean(omega))
 matlab = read.csv("decision_making_parameter_compar.csv", header = F)
+
 matlab = matlab %>% rename(omega_matlab = V1, beta_matlab = V2, id = V3)
 
 compar_data = inner_join(sum,matlab)
 
-compar_data %>% ggplot(aes(x = omega_matlab, y = omega))+geom_point()+theme_classic()+ylab("Omega_R")
+omega = compar_data %>% ggplot(aes(x = omega_matlab, y = omega))+geom_point()+theme_classic()+ylab(expression(paste(omega, " in JAGS")))+theme(text=element_text(size=18))+xlab(expression(paste(omega, " original")))+geom_abline(y=x)
 
-compar_data %>% ggplot(aes(x = beta_matlab, y = beta))+geom_point()+theme_classic()+ylab("Omega_R")
 
+beta = compar_data %>% ggplot(aes(x = beta_matlab, y = beta))+geom_point()+theme_classic()+ylab(expression(paste(beta, " in JAGS")))+theme(text=element_text(size=18))+xlab(expression(paste(beta, " original")))+geom_abline(y=x)
+
+library(patchwork)
+
+matlabtor = omega/beta
 ```
 
 
@@ -1169,5 +1130,137 @@ trajectories
 
 
 
+
+```{r}
+#shits and giggles
+
+sa2 = array(NA,c(307,123))
+
+
+#in subs
+for (s in 1:123){
+  #in trials
+  for (t in 1:307){
+    sa2[t,s] = mean(sa22[1:3000,t,s])
+  }
+}
+
+colnames(sa2) = ids$X266
+
+
+datty = data.frame(sa2)
+
+datty = datty %>% pivot_longer(cols = everything())
+
+datty$name = sub('.', '', datty$name)
+
+datty$id = datty$name
+
+datty$name = NULL
+
+datty$id = as.factor(datty$id)
+
+datty = datty %>% group_by(id) %>% mutate(trial = 1:307)
+
+datty = datty %>% filter(trial != 307)
+
+df1$id = as.factor(df1$id)
+
+datty2 = inner_join(datty, df1, by = c("id","trial"))
+
+
+dataaaa = datty2 %>% dplyr::select("burnbeta","sa2","stim","vasRT_3","trial","id") %>% drop_na()
+
+library(gamlss)
+expectation_sa2_burn_HGF <-gamlss(burnbeta ~ sa2*stim+vasRT_3+trial+random(id),
+           nu.formula = ~ sa2*stim+vasRT_3+trial+random(id),
+           tau.formula = ~ sa2*stim+vasRT_3+trial+random(id),
+           data = dataaaa,
+           family = BEINF(mu.link = "logit",sigma.link = "logit",nu.link = "logit",tau.link = "logit"),trace = F)
+
+
+summary(expectation_sa2_burn_HGF)
+```
+
+
+```{r}
+
+cleanu = df1 %>% dplyr::select(u,id,trial) %>% drop_na()
+
+
+cleanu = cleanu %>% pivot_wider(names_from = c("id"), values_from = c("u"))
+
+
+cleany = df1 %>% dplyr::select(predResp2,id,trial) %>% drop_na()
+
+
+cleany = cleany %>% pivot_wider(names_from = c("id"), values_from = c("predResp2"))
+
+cleanu$trial = NULL
+
+u = as.matrix(cleanu)
+
+u[is.na(u)] <- 0
+
+
+cleany$trial = NULL
+
+y = as.matrix(cleany)
+
+y[is.na(y)] <- 0
+
+ntrials = 306
+nsubs = 261
+
+data <- list("y","u","ntrials","nsubs")
+
+
+params<-c("omega_mu","beta_mu","omega","beta","sa2","sa2hat","mu1hat")
+
+
+samples <- jags.parallel(data, inits=NULL, params,
+                         model.file ="/home/jespere/Decision_making_exam/HHGF.txt", n.chains=3, 
+                         n.iter=3000, n.burnin=1000)
+
+
+```
+
+
+```{r}
+
+ids = unique(df1$id)
+
+sa22 = samples$BUGSoutput$mean$sa2
+
+sa22 = as.data.frame(sa22)
+
+colnames(sa22) = ids
+
+sa22 = sa22 %>% pivot_longer(cols = everything())
+
+sa22 = sa22 %>% group_by(name) %>% mutate(trial = 1:306)
+
+sa22$id = sa22$name
+sa22$name = NULL
+sa22$sa22 = sa22$value
+
+gg = inner_join(df1,sa22,by = c("id","trial"))
+
+
+dataaaa = gg %>% dplyr::select("vasResp_3","sa22","sa2","stim","vasRT_3","trial","id") %>% drop_na()
+
+dataaaa$value = dataaaa$vasResp_3/100
+dataaaa$id = as.factor(dataaaa$id)
+
+library(gamlss)
+expectation_sa2_burn_HGF <-gamlss(value ~ sa22*stim+vasRT_3+trial+random(id),
+           nu.formula = ~ sa22*stim+vasRT_3+trial+random(id),
+           tau.formula = ~ sa22*stim+vasRT_3+trial+random(id),
+           data = dataaaa,
+           family = BEINF(mu.link = "logit",sigma.link = "logit",nu.link = "logit",tau.link = "logit"),trace = F)
+
+
+summary(expectation_sa2_burn_HGF)
+```
 
 

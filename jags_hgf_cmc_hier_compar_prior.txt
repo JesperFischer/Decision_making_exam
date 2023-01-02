@@ -7,7 +7,7 @@ beta_mu ~ dnorm(0,1)T(0,)
 beta_sigma ~ dgamma(1,.1)
 
 c_mu ~ dnorm(0, 0.5)
-c_sigma ~ dnorm(0.5, 0.5)
+c_sigma ~ dnorm(0.5, 1)
 
 alpha ~ dnorm(0,0.5)
 
@@ -55,7 +55,7 @@ alpha ~ dnorm(0,0.5)
     c4[s] ~ dnorm(c_mu-(alpha/2),c_sigma)
     
     mu2[1,s] <- 0
-    sa2[1,s] <- 4
+    sa2[1,s] <- 0.5
     sa2hat[1,s] <- 0
     mu1hat[1,s] <- 0
     sa1hat[1,s] <- 0
