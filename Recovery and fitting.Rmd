@@ -19,7 +19,7 @@ library(ggeffects)
 ## R Markdown
 
 
-```{r}
+```{r reading_data}
 
 df1 = read.csv("data.csv")
 
@@ -31,7 +31,7 @@ u = df$u
 ntrials = 306
 ```
 
-```{r}
+```{r frequentist_analysis}
 df1$predRespp = ifelse(df1$predResp == "cold", a <- 1, b<-0)
 df1$id = as.factor(df1$id)
 df1$desired_prob = as.factor(df1$desired_prob)
@@ -47,7 +47,7 @@ df1 %>% filter(stim != "TGI") %>% group_by(stim,cue) %>% summarize(n=n())
 
 ```
 
-```{r}
+```{r full_implementation_of_HHGF_parameter_recovery_one_runthrough}
 source("full_HHGF_comparison.R")
 
 ntrials = 307
@@ -109,7 +109,7 @@ samples <- jags.parallel(data, inits=NULL, params,
 
 
 
-```{r}
+```{r full_implementation_of_HHGF_parameter_recovery_all_runs}
 source("full_HHGF_comparison.R")
 
 sim_data1 = data.frame(alpha = NA,beta_mu = NA,c_mu = NA,deviance = NA, omega_mu = NA)
@@ -215,15 +215,12 @@ alpha = ggplot(data = real_data1, aes(x = alpha, y = sim_data1$alpha))+geom_poin
 ```
 
 
-```{r}
-simdata = sim_data1
-realdata = real_data1
-```
 
 
 
 
-```{r}
+
+```{r visualization_of_response_model}
 #visual of response models:
 
 colors = c("#537c78","#7ba591","#cc222b","#f15b4c","#faa41b","#ffd45b")
@@ -307,7 +304,7 @@ logs+gam+plot_layout(guides = "collect")
 
 
 
-```{r parameter recovery of cmc model}
+```{r parameter_recovery_of_cmc_model_no_hierachical_with_cmc}
 source("2_level_hgf_agent_cmc.R")
 
 sim_data1 = data.frame(beta = NA,c = NA,deviance = NA,omega = NA)
@@ -380,7 +377,7 @@ omega/beta/gamma
 
 
 
-```{r normal parameter recovery}
+```{r normal_parameter_recovery_2_level}
 
 source("2_level_hgf_agent.R")
 
@@ -443,11 +440,10 @@ ggplot(data = real_data2, aes(x = beta, y = sim_data2$beta))+geom_point()+ggtitl
 
 
 ```{r 3 level parameter recovery}
+
+#see also hgf_pamam-1
+
 source("3_level_hgf_agent.R")
-
-
-
-
 
 #i = 279
 
@@ -520,7 +516,7 @@ ggplot(data = real_data3, aes(x = kappa, y = sim_data3$kappa))+geom_point()+ggti
 
 
 
-```{r no comparison}
+```{r hierarchical_HGF_without_alpha}
 ids = df1 %>% filter(sequence == 1) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
 
 ids = as.matrix(ids)
@@ -584,146 +580,7 @@ samples$BUGSoutput$summary
 
 
 
-#Idk
-```{r model recovery}
-source("2_level_hgf_agent_cmc.R")
-
-#simualting from cmc model
-
-DIC_n_cmc = array(NA,1000)
-DIC_cmc_cmc = array(NA,1000)
-
-timer = 0
-
-for (ii in 1:10){
-  for (i in 1:100){
-    timer = timer+1
-    ntrials = 307
-    df = df1 %>% filter(id == 268)
-    df = df %>% add_row(.before = 1)
-    u = df$u
-    u[1] = -100
-    print(ii)
-    
-    beta = ii
-    
-    omega = runif(n = 1, min = -8, max = 1)
-    
-    c = runif(n = 1, min = -5, max = 5)
-    
-    data = hgf_agent_c(u,omega,beta,c)
-    
-    
-  
-    yhat = as.integer(data$yhat)
-  
-    y = yhat
-    
-    data <- list("y","u","ntrials")
-    
-    params<-c("omega","beta")
-    
-    samples <- jags.parallel(data, inits=NULL, params,
-                             model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
-                             n.iter=3000, n.burnin=1000)
-    
-    DIC_n_cmc[timer] = samples$BUGSoutput$DIC
-    
-    
-    params<-c("omega","beta","c")
-    
-    
-    samples <- jags.parallel(data, inits=NULL, params,
-                             model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
-                             n.iter=3000, n.burnin=1000)
-    
-    DIC_cmc_cmc[timer] = samples$BUGSoutput$DIC
-  
-  
-  }
-}
-
-
-source("2_level_hgf_agent.R")
-#simualting from cmc model
-
-DIC_n_n = array(NA,1000)
-DIC_cmc_n = array(NA,1000)
-timer = 0
-
-for (ii in 1:10){
-  for (i in 1:100){
-    timer = timer+1
-    ntrials = 307
-    df = df1 %>% filter(id == 268)
-    df = df %>% add_row(.before = 1)
-    u = df$u
-    u[1] = -100
-    
-    
-    beta = runif(n = 1, min = 1, max = 10)
-    
-    omega = runif(n = 1, min = -8, max = 1)
-    
-    data = hgf_agent(u,omega,beta)
-    
-    
-  
-    yhat = as.integer(data$yhat)
-  
-    y = yhat
-    
-    data <- list("y","u","ntrials")
-    
-    params<-c("omega","beta")
-    
-    samples <- jags.parallel(data, inits=NULL, params,
-                             model.file ="/home/jespere/Decision_making_exam/jags_hgf.txt", n.chains=3, 
-                             n.iter=3000, n.burnin=1000)
-    
-    DIC_n_n[timer] = samples$BUGSoutput$DIC
-    
-    
-    params<-c("omega","beta","c")
-    
-    
-    samples <- jags.parallel(data, inits=NULL, params,
-                             model.file ="/home/jespere/Decision_making_exam/jags_hgf_cmc.txt", n.chains=3, 
-                             n.iter=3000, n.burnin=1000)
-    
-    DIC_cmc_n[timer] = samples$BUGSoutput$DIC
-  
-  print(ii)
-  }
-
-}
-
-
-```
-
-
-#idk
-```{r}
-
-sum1 = array(NA,10)
-sum2 = array(NA,10)
-timer = c(1,100,200,300,400,500,600,700,800,900,100)
-
-
-for (i in 1:10){
-  (timer+1)*100
-  
-sum1[i] = sum(DIC_n_n[timer[i]:(i*100)]>DIC_cmc_n[timer[i]:(i*100)])
-sum2[i] = sum(DIC_cmc_cmc[timer[i]:(i*100)]>DIC_n_cmc[timer[i]:(i*100)])
-
-}
-
-
-```
-
-
-
-```{r lets run this cmc:}
+```{r analysis_on_two_level_hgf_with_cmc}
 
 cmc_data = data.frame(beta = NA,c = NA,da = NA,deviance = NA,mu1hat = NA,mu2 = NA, omega = NA,sa1hat = NA, sa2 = NA,sa2hat = NA,ntrials  = NA, id = NA, DIC = NA)
 
@@ -785,20 +642,8 @@ cmc_data = cmc_data[-1,]
 
 ```
 
-```{r}
-#write.csv(cmc_data, "cmc_data.csv")
-```
 
-
-```{r}
-qq %>% filter(sequence == 1) %>% ggplot(aes(x = trial, y = desired_prob))+geom_line()
-qq = inner_join(df1, cmc_data, by = c("id","trial"))
-qq %>% filter(trial == 1) %>% ggplot(aes(y = c, x = as.factor(sequence)))+geom_boxplot(notch = T)
-
-```
-
-
-```{r lets run this normal: }
+```{r lets run_this_normal_to_compare_with_matlab}
 ndata = data.frame(beta = NA,da = NA,deviance = NA,mu1hat = NA,mu2 = NA, omega = NA,sa1hat = NA, sa2 = NA,sa2hat = NA,ntrials  = NA, id = NA, DIC = NA)
 
 timer = 0
@@ -857,7 +702,8 @@ for (i in unique(df1$id)){
 ndata = ndata[-1,]
 ```
 
-```{r}
+```{r comparison_with_matlab}
+
 sum = ndata %>% group_by(id) %>% summarize(beta = mean(beta), omega = mean(omega))
 matlab = read.csv("decision_making_parameter_compar.csv", header = F)
 
@@ -901,137 +747,17 @@ yes %>% group_by(id) %>% filter(row_number()==1) %>% ggplot(aes(y = c, fill = as
 
 
 
-```{r}
 
-#There is a problem of that 1 is high-tone = cold but also low tone = warm (so what drives the effect??)
 
-k = 0
-sequence = array(NA,length(unique(df1$id)))
-for (i in unique(df1$id)){
-  k = k+1
-  df = df1 %>% filter(id == i)
-  seq = df$sequence[1]
-  sequence[k] = seq
-}
 
 
-real_data2$seq = sequence
 
-real_data2 %>% ggplot(aes(x = as.factor(seq), y = c, fill = as.factor(seq)))+geom_boxplot(notch = T)
 
 
-summary(lm(c ~ as.factor(seq), data = real_data2))
 
-```
 
 
-
-```{r}
-
-
-xax = cmc_data %>% group_by(id) %>% filter(row_number()==1) %>% summarize(meancmc = mean(DIC))
-
-xax1 = ndata %>% group_by(id) %>% filter(row_number()==1) %>% summarize(meann = mean(DIC))
-
-
-deviance = inner_join(xax,xax1)
-
-
-deviance %>% ggplot(aes(y = meann,x = meancmc))+geom_point()+geom_abline()
-
-```
-
-
-
-
-
-
-
-### models:
-
-
-```{r}
-
-
-
-m_cold_feel22xxx = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
-                         data = cmc %>% filter(stim != "NaN" & sa2.x < 6))
-
-summary(m_cold_feel22xxx)
-
-
-
-
-
-m_cold_feel22xx = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
-                         data = normal %>% filter(stim != "NaN" & sa2.x < 6))
-
-summary(m_cold_feel22xx)
-
-
-
-
-
-
-
-
-m_cold_feel22 = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
-                         data = cmc %>% filter(stim != "NaN"))
-
-summary(m_cold_feel22)
-
-
-
-
-
-m_cold_feel22x = glmmTMB::glmmTMB(burnbeta ~ sa2.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2.x+vasRT_3+(1|id)+(1|id:location),
-                         data = normal %>% filter(stim != "NaN"))
-
-summary(m_cold_feel22x)
-
-
-
-
-
-m_cold_feel = glmmTMB::glmmTMB(burnbeta ~ sa2hat.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2hat.x+vasRT_3+(1|id)+(1|id:location),
-                         data = cmc %>% filter(stim != "NaN"))
-
-summary(m_cold_feel)
-
-
-
-
-
-m_cold_feel2 = glmmTMB::glmmTMB(burnbeta ~ sa2hat.x*stim+vasRT_3+trial+(1|id)+(1|id:location),
-                         family = beta_family(),
-                         ziformula =~1+stim*sa2hat.x+vasRT_3+(1|id)+(1|id:location),
-                         data = normal %>% filter(stim != "NaN"))
-
-summary(m_cold_feel2)
-
-
-
-
-```
-
-
-
-
-
-
-
-
-```{r}
+```{r fitting_one_participant_to_plot}
 i =268
 df = df1 %>% filter(id == i)
 df = df %>% add_row(.before = 1)
@@ -1080,7 +806,7 @@ yup = data.frame(beta = rep(samples$BUGSoutput$summary[1,1],ntrials),
 
 
 
-```{r}
+```{r plottingtrajectories}
 #plotting
 
 yup$u = u
@@ -1126,141 +852,6 @@ trajectories = q3 %>% mutate(level = factor(level, labels = c("Predictions","Exp
 
 
 trajectories
-```
-
-
-
-
-```{r}
-#shits and giggles
-
-sa2 = array(NA,c(307,123))
-
-
-#in subs
-for (s in 1:123){
-  #in trials
-  for (t in 1:307){
-    sa2[t,s] = mean(sa22[1:3000,t,s])
-  }
-}
-
-colnames(sa2) = ids$X266
-
-
-datty = data.frame(sa2)
-
-datty = datty %>% pivot_longer(cols = everything())
-
-datty$name = sub('.', '', datty$name)
-
-datty$id = datty$name
-
-datty$name = NULL
-
-datty$id = as.factor(datty$id)
-
-datty = datty %>% group_by(id) %>% mutate(trial = 1:307)
-
-datty = datty %>% filter(trial != 307)
-
-df1$id = as.factor(df1$id)
-
-datty2 = inner_join(datty, df1, by = c("id","trial"))
-
-
-dataaaa = datty2 %>% dplyr::select("burnbeta","sa2","stim","vasRT_3","trial","id") %>% drop_na()
-
-library(gamlss)
-expectation_sa2_burn_HGF <-gamlss(burnbeta ~ sa2*stim+vasRT_3+trial+random(id),
-           nu.formula = ~ sa2*stim+vasRT_3+trial+random(id),
-           tau.formula = ~ sa2*stim+vasRT_3+trial+random(id),
-           data = dataaaa,
-           family = BEINF(mu.link = "logit",sigma.link = "logit",nu.link = "logit",tau.link = "logit"),trace = F)
-
-
-summary(expectation_sa2_burn_HGF)
-```
-
-
-```{r}
-
-cleanu = df1 %>% dplyr::select(u,id,trial) %>% drop_na()
-
-
-cleanu = cleanu %>% pivot_wider(names_from = c("id"), values_from = c("u"))
-
-
-cleany = df1 %>% dplyr::select(predResp2,id,trial) %>% drop_na()
-
-
-cleany = cleany %>% pivot_wider(names_from = c("id"), values_from = c("predResp2"))
-
-cleanu$trial = NULL
-
-u = as.matrix(cleanu)
-
-u[is.na(u)] <- 0
-
-
-cleany$trial = NULL
-
-y = as.matrix(cleany)
-
-y[is.na(y)] <- 0
-
-ntrials = 306
-nsubs = 261
-
-data <- list("y","u","ntrials","nsubs")
-
-
-params<-c("omega_mu","beta_mu","omega","beta","sa2","sa2hat","mu1hat")
-
-
-samples <- jags.parallel(data, inits=NULL, params,
-                         model.file ="/home/jespere/Decision_making_exam/HHGF.txt", n.chains=3, 
-                         n.iter=3000, n.burnin=1000)
-
-
-```
-
-
-```{r}
-
-ids = unique(df1$id)
-
-sa22 = samples$BUGSoutput$mean$sa2
-
-sa22 = as.data.frame(sa22)
-
-colnames(sa22) = ids
-
-sa22 = sa22 %>% pivot_longer(cols = everything())
-
-sa22 = sa22 %>% group_by(name) %>% mutate(trial = 1:306)
-
-sa22$id = sa22$name
-sa22$name = NULL
-sa22$sa22 = sa22$value
-
-gg = inner_join(df1,sa22,by = c("id","trial"))
-
-
-dataaaa = gg %>% dplyr::select("vasResp_3","sa22","sa2","stim","vasRT_3","trial","id") %>% drop_na()
-
-dataaaa$value = dataaaa$vasResp_3/100
-dataaaa$id = as.factor(dataaaa$id)
-
-library(gamlss)
-expectation_sa2_burn_HGF <-gamlss(value ~ sa22*stim+vasRT_3+trial+random(id),
-           nu.formula = ~ sa22*stim+vasRT_3+trial+random(id),
-           tau.formula = ~ sa22*stim+vasRT_3+trial+random(id),
-           data = dataaaa,
-           family = BEINF(mu.link = "logit",sigma.link = "logit",nu.link = "logit",tau.link = "logit"),trace = F)
-
-
-summary(expectation_sa2_burn_HGF)
 ```
 
 

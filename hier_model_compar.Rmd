@@ -21,7 +21,7 @@ df1 = read.csv("data.csv")
 
 
 
-```{r hierachical 2-level comparison}
+```{r Full_HHGF_2_level_fitting}
 
 is1 = df1 %>% filter(sequence == 1) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
 
@@ -62,7 +62,7 @@ u1 = as.matrix(us)
 ```
 
 
-```{r}
+```{r Full_HHGF_2_level_fitting}
 is4 = df1 %>% filter(sequence == 4) %>% group_by(id) %>% summarize(id = mean(as.numeric(as.character(id))))
 
 
@@ -112,8 +112,9 @@ u4 = as.matrix(us)
 ```
 
 
-```{r hierachical 2-level}
+```{r Full_HHGF_2_level_fitting}
 
+#imputing missing data
 u1[is.na(u1)] <- 0
 y1[is.na(y1)] <- 0
 
@@ -158,14 +159,13 @@ c_prior2 = data.frame() %>% ggplot()+geom_density(aes(x = c_prior, col = "red",f
 
 library(patchwork)
 
-
 prior_posterior_updates = (alpha_plot1+alpha_plot2)/(c_prior1+c_prior2)
 prior_posterior_updates
 
 ```
 
 
-```{r}
+```{r bayesfactor analysis}
 library(logspline)
 #bayesfactor calculations alpha
 post_fit_alpha = logspline(samples$BUGSoutput$sims.list$alpha)
@@ -192,7 +192,6 @@ post_fit_gamma/null_fit_gamma
 #traceplots of parameters:
 
 traceplot(samples, varname = "alpha")
-
 
 ```
 
