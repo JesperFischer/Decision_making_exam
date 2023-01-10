@@ -1,0 +1,162 @@
+---
+title: "dec_making"
+author: "Julie Svinth Nielsen"
+date: '2022-12-30'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+
+
+library(readr)
+library(tidyverse)
+library(rjags)
+library(R2jags)
+library(patchwork)
+
+
+df1 <- read_csv("data_dec.csv")
+```
+
+
+```{r cars}
+source("3_lag.R")
+
+sim_data3 = data.frame(beta = NA,deviance = NA,kappa = NA, omega = NA, theta = NA)
+real_data3 = data.frame(beta = NA,omega = NA, theta = NA, kappa = NA)
+
+for (i in 1:100){
+  ntrials = 307
+  df = df1 %>% filter(id == 293)
+  df = df %>% add_row(.before = 1)
+  u = df$u
+  u[1] = -100
+  
+  
+  beta = runif(n = 1, min = 1, max = 10)
+  
+  omega = runif(n = 1, min = -8, max = 1)
+  
+  theta = runif(n = 1, min = -10, max = 0)
+  
+  kappa = runif(n = 1, min = 0, max = 3)
+
+  
+  data = data.frame(beta = beta,omega = omega, theta = theta, kappa = kappa)
+  
+  real_data3 = rbind(real_data3, data)
+  
+  data = hgf_agent_3level(u,omega,theta, kappa, beta)
+  
+  yhat = as.integer(data$yhat)
+
+  y = yhat
+  
+  data <- list("y","u","ntrials")
+  
+  params<-c("omega","beta", "kappa", "theta")
+  
+  
+  samples <- jags.parallel(data, inits=NULL, params,
+                           model.file ="jags_3_hgf.txt", n.chains=3, 
+                           n.iter=3000, n.burnin=1000)
+  
+  
+
+  sim_data3 = rbind(sim_data3,samples$BUGSoutput$summary[,1])
+  
+  print(i)
+}
+
+
+
+
+#plotting
+
+sim_data3$deviance = NULL
+
+
+
+ggplot(data = real_data3, aes(x = omega, y = sim_data3$omega))+geom_point()+ggtitle("omega")+geom_smooth()
+
+
+
+ggplot(data = real_data3, aes(x = beta, y = sim_data3$beta))+geom_point()+ggtitle("beta")
+
+ggplot(data = real_data3, aes(x = theta, y = sim_data3$theta))+geom_point()+ggtitle("theta")
+
+ggplot(data = real_data3, aes(x = kappa, y = sim_data3$kappa))+geom_point()+ggtitle("kappa")
+
+```
+
+```{r}
+kappa_1 = ggplot(data = real_268, aes(x = kappa, y = sim_268$kappa))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",kappa)))+theme_classic()+ylab(expression(paste("Recovered ", kappa)))+xlab(expression(paste("Simulated ",kappa)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5)) + ylim(0,1.5)
+
+
+kappa_1
+```
+
+```{r}
+theta_1 = ggplot(data = real_268, aes(x = theta, y = sim_268$theta))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",theta)))+theme_classic()+ylab(expression(paste("Recovered ", theta)))+xlab(expression(paste("Simulated ",theta)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5))+ ylim(-6.3,0)
+
+
+
+
+
+theta_1
+```
+
+```{r}
+omega_1 = ggplot(data = real_268, aes(x = omega, y = sim_268$omega))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",omega)))+theme_classic()+ylab(expression(paste("Recovered ", omega)))+xlab(expression(paste("Simulated ",omega)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5))
+
+
+omega_1
+
+```
+
+```{r}
+beta_1 = ggplot(data = real_268, aes(x = beta, y = sim_268$beta))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",beta)))+theme_classic()+ylab(expression(paste("Recovered ", beta)))+xlab(expression(paste("Simulated ",beta)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5))+ylim(0,10.5)+xlim(0,10.5)
+
+beta_1
+```
+
+```{r}
+real_268 <- real_data3
+sim_268 <- sim_data3
+```
+
+```{r}
+real_293 <- real_data3
+sim_293 <- sim_data3
+```
+
+```{r}
+# kappa
+kappa = ggplot(data = real_293, aes(x = real_293$kappa, y = sim_293$kappa))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",kappa)))+theme_classic()+ylab(expression(paste("Recovered ", kappa)))+xlab(expression(paste("Simulated ",kappa)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5)) + ylim(0,1.5)
+
+# Theta
+theta = ggplot(data = real_293, aes(x = real_293$theta, y = sim_293$theta))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",theta)))+theme_classic()+ylab(expression(paste("Recovered ", theta)))+xlab(expression(paste("Simulated ",theta)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5)) + ylim(-6.3,0)
+
+# Omega
+omega = ggplot(data = real_293, aes(x = real_293$omega, y = sim_293$omega))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",omega)))+theme_classic()+ylab(expression(paste("Recovered ", omega)))+xlab(expression(paste("Simulated ",omega)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5)) 
+
+# Beta
+beta = ggplot(data = real_293, aes(x = real_293$beta, y = sim_293$beta))+geom_point()+ggtitle(expression(paste("Parameter recovery for ",beta)))+theme_classic()+ylab(expression(paste("Recovered ", beta)))+xlab(expression(paste("Simulated ",beta)))+theme(text=element_text(size=18))+geom_abline(intercept = 0, slope = 1)+theme(plot.title = element_text(hjust = 0.5)) + ylim(0,10.5)+xlim(0,10.5)
+
+
+kappa
+theta
+omega
+beta
+```
+
